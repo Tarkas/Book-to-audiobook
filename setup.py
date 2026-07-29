@@ -21,7 +21,7 @@ class PostInstallCommand(install):
     def run(self):
         install.run(self)
         try:
-            subprocess.run([sys.executable, 'python -m', 'unidic', 'download'], check=True)
+            subprocess.run([sys.executable, '-m', 'unidic', 'download'], check=True)
         except Exception:
             print("unidic download failed during installation, but it will be re-attempted a diffrent way when the app itself runs.")
 

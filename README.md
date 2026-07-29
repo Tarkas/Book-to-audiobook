@@ -95,6 +95,7 @@ https://github.com/user-attachments/assets/81c4baad-117e-4db5-ac86-efc2b7fea921
   - [Docker headless guide](#docker-headless-guide)
   - [Docker container file locations](#docker-container-file-locations)
   - [Common Docker issues](#common-docker-issues)
+- [Translation Features](#translation-features)
 - [Supported eBook Formats](#supported-ebook-formats)
 - [Output Formats](#output-formats)
 - [Updating to Latest Version](#updating-to-latest-version)
@@ -110,7 +111,7 @@ https://github.com/user-attachments/assets/81c4baad-117e-4db5-ac86-efc2b7fea921
 - 🗣️ Optional voice cloning with your own voice file.
 - 🌍 Supports +1110 languages (English by default). [List of Supported languages](https://dl.fbaipublicfiles.com/mms/tts/all-tts-languages.html)
 - 🖥️ Designed to run on 4GB RAM.
-
+- 🌐 Multiple translation options including Google Translate, DeepL, and offline Argos Translate
 
 ## Supported Languages
 | **Arabic (ar)**    | **Chinese (zh)**    | **English (en)**   | **Spanish (es)**   |
@@ -476,6 +477,37 @@ docker run --pull always --rm --gpus all -e HF_HUB_DISABLE_PROGRESS_BARS=1 -e HF
 [![Hugging Face](https://img.shields.io/badge/Hugging%20Face-Models-yellow?style=flat&logo=huggingface)](https://huggingface.co/drewThomasson/fineTunedTTSModels/tree/main)
 
 For an XTTSv2 custom model a ref audio clip of the voice reference is mandatory:
+
+
+## Translation Features
+
+ebook2audiobook supports translating your eBooks before converting them to audiobooks. This is especially useful when you have an eBook in one language but want to listen to it in another language.
+
+### Supported Translation Methods
+
+1. **Google Translate** - Online translation service (requires internet connection)
+2. **DeepL Official** - Official DeepL API (requires API key, highest quality)
+3. **DeepL Parser** - Web-based parser implementation (no API key required)
+4. **Argos Translate** - Offline translation engine (no internet required)
+
+### How to Use Translation
+
+1. In the GUI interface, go to the "Translation" tab
+2. Check "Translate ebook content"
+3. Select the source language (current language of your eBook)
+4. Select the target language (language you want for the audiobook)
+5. Choose your preferred translation method
+6. Start the conversion process
+
+The application will automatically translate your eBook before converting it to an audiobook.
+
+### Language Support
+
+Translation is available for a wide range of languages. The exact languages supported depend on the translation method you choose:
+
+- **Google Translate**: Supports 100+ languages
+- **DeepL**: Supports 30+ languages with high quality
+- **Argos Translate**: Supports 60+ languages offline
 
 
 ## Supported eBook Formats

@@ -4,6 +4,7 @@ import numpy as np, regex as re, soundfile as sf, torch, torchaudio
 from huggingface_hub import hf_hub_download
 from pathlib import Path
 from pprint import pprint
+import logging
 
 from lib import *
 from lib.classes.tts_engines.common.utils import unload_tts, append_sentence2vtt
@@ -38,7 +39,8 @@ class Coqui:
         except Exception as e:
             error = f'__init__() error: {e}'
             print(error)
-            return None
+            # Don't return None from __init__, just let the exception propagate
+            # or handle it gracefully
 
     def _build(self):
         try:
@@ -150,7 +152,10 @@ class Coqui:
                         msg = f"Loading TTS {self.tts_vc_key} zeroshot model, it takes a while, please be patient..."
                         print(msg)
                         tts_vc = self._load_api(self.tts_vc_key, default_vc_model, self.session['device'])
-            return (loaded_tts.get(self.tts_key) or {}).get('engine', False)
+                if tts_vc:
+                    self._install_vc_matching_cache(tts_vc)
+            self.tts = (loaded_tts.get(self.tts_key) or {}).get('engine', False)
+            return self.tts
         except Exception as e:
             error = f'build() error: {e}'
             print(error)
@@ -414,6 +419,47 @@ class Coqui:
         sf.write(tmp_path, wav_numpy, expected_sr, subtype="PCM_16")
         return tmp_path
 
+    def _get_cached_resampled_target(self, voice_path, expected_sr):
+        # The reference (target) voice is the same for the whole book, so resample it to
+        # the VC sample rate only once and reuse the file. Keeping the path stable lets the
+        # WavLM matching-set cache below actually hit, instead of missing on a fresh temp
+        # file every sentence.
+        cache = self.__dict__.setdefault('_vc_target_resampled', {})
+        key = (voice_path, expected_sr)
+        cached = cache.get(key)
+        if cached and os.path.exists(cached):
+            return cached
+        resampled = self._resample_wav(voice_path, expected_sr)
+        cache[key] = resampled
+        return resampled
+
+    def _install_vc_matching_cache(self, tts_vc):
+        # KNN-VC recomputes the target voice's WavLM "matching set" (a full WavLM-Large
+        # pass over the whole reference clip) on EVERY sentence, which dominates CPU time.
+        # Wrap get_matching_set so those features are extracted once per reference and reused.
+        try:
+            vc_model = tts_vc.synthesizer.vc_model
+        except Exception:
+            return
+        if vc_model is None or getattr(vc_model, '_e2ab_matching_cache', None) is not None:
+            return
+        original_get_matching_set = vc_model.get_matching_set
+        feature_cache = {}
+
+        def cached_get_matching_set(wavs, vad_trigger_level=7):
+            try:
+                items = wavs if isinstance(wavs, list) else [wavs]
+                key = tuple((w if isinstance(w, str) else id(w), vad_trigger_level) for w in items)
+            except Exception:
+                return original_get_matching_set(wavs, vad_trigger_level=vad_trigger_level)
+            if key not in feature_cache:
+                feature_cache[key] = original_get_matching_set(wavs, vad_trigger_level=vad_trigger_level)
+            return feature_cache[key]
+
+        vc_model.get_matching_set = cached_get_matching_set
+        vc_model._e2ab_matching_cache = feature_cache
+        logging.info("KNN-VC matching-set cache enabled (reference WavLM features computed once).")
+
     def convert(self, s_n, s):
         global xtts_builtin_speakers_list
         try:
@@ -424,11 +470,18 @@ class Coqui:
             trim_audio_buffer = 0.004
             settings = self.params[self.session['tts_engine']]
             final_sentence_file = os.path.join(self.session['chapters_dir_sentences'], f'{sentence_number}.{default_audio_proc_format}')
+            
+            logging.info(f"Coqui.convert: Processing sentence {sentence_number}: {sentence[:50]}{'...' if len(sentence) > 50 else ''}")
+            logging.info(f"Coqui.convert: TTS engine: {self.session['tts_engine']}")
+            logging.info(f"Coqui.convert: Language: {self.session['language']}")
+            logging.info(f"Coqui.convert: Output file: {final_sentence_file}")
+            
             settings['voice_path'] = (
                 self.session['voice'] if self.session['voice'] is not None 
                 else os.path.join(self.session['custom_model_dir'], self.session['tts_engine'], self.session['custom_model'], 'ref.wav') if self.session['custom_model'] is not None
                 else models[self.session['tts_engine']][self.session['fine_tuned']]['voice']
             )
+            
             if settings['voice_path'] is not None:
                 speaker = re.sub(r'\.wav$', '', os.path.basename(settings['voice_path']))
                 if settings['voice_path'] not in default_engine_settings[TTS_ENGINES['BARK']]['voices'].keys() and os.path.basename(settings['voice_path']) != 'ref.wav':
@@ -436,22 +489,31 @@ class Coqui:
                     if not settings['voice_path']:
                         msg = f"Could not create the builtin speaker selected voice in {self.session['language']}"
                         print(msg)
+                        logging.error(f"Coqui.convert: {msg}")
                         return False
+                        
             tts = (loaded_tts.get(self.tts_key) or {}).get('engine', False)
             if tts:
+                logging.info(f"Coqui.convert: TTS engine loaded successfully")
+                
                 if sentence == TTS_SML['break']:
                     silence_time = int(np.random.uniform(0.3, 0.6) * 100) / 100
                     break_tensor = torch.zeros(1, int(settings['samplerate'] * silence_time)) # 0.4 to 0.7 seconds
                     self.audio_segments.append(break_tensor.clone())
+                    logging.info(f"Coqui.convert: Created break silence for sentence {sentence_number}")
                     return True
                 elif sentence == TTS_SML['pause']:
                     silence_time = int(np.random.uniform(1.0, 1.8) * 100) / 100
                     pause_tensor = torch.zeros(1, int(settings['samplerate'] * silence_time)) # 1.0 to 1.8 seconds
                     self.audio_segments.append(pause_tensor.clone())
+                    logging.info(f"Coqui.convert: Created pause silence for sentence {sentence_number}")
                     return True
                 else:
                     if sentence[-1].isalnum():
                         sentence = f'{sentence} —'
+                        
+                    logging.info(f"Coqui.convert: Generating audio for sentence {sentence_number}")
+                    
                     if self.session['tts_engine'] == TTS_ENGINES['XTTSv2']:
                         trim_audio_buffer = 0.008
                         if settings['voice_path'] is not None and settings['voice_path'] in settings['latent_embedding'].keys():
@@ -459,6 +521,7 @@ class Coqui:
                         else:
                             msg = 'Computing speaker latents...'
                             print(msg)
+                            logging.info(f"Coqui.convert: {msg}")
                             if speaker in default_engine_settings[TTS_ENGINES['XTTSv2']]['voices'].keys():
                                 settings['gpt_cond_latent'], settings['speaker_embedding'] = xtts_builtin_speakers_list[default_engine_settings[TTS_ENGINES['XTTSv2']]['voices'][speaker]].values()
                             else:
@@ -510,6 +573,7 @@ class Coqui:
                             if not self._check_bark_npz(settings['voice_path'], bark_dir, speaker, self.session['device']):
                                 error = 'Could not create npz file!'
                                 print(error)
+                                logging.error(f"Coqui.convert: {error}")
                                 return False
                         npz_file = os.path.join(bark_dir, speaker, f'{speaker}.npz')
                         fine_tuned_params = {
@@ -594,7 +658,7 @@ class Coqui:
                             if tts_vc:
                                 settings['samplerate'] = TTS_VOICE_CONVERSION[self.tts_vc_key]['samplerate']
                                 source_wav = self._resample_wav(tmp_out_wav, settings['samplerate'])
-                                target_wav = self._resample_wav(settings['voice_path'], settings['samplerate'])
+                                target_wav = self._get_cached_resampled_target(settings['voice_path'], settings['samplerate'])
                                 audio_sentence = tts_vc.voice_conversion(
                                     source_wav=source_wav,
                                     target_wav=target_wav
@@ -616,7 +680,7 @@ class Coqui:
                             )
                     elif self.session['tts_engine'] == TTS_ENGINES['FAIRSEQ']:
                         speaker_argument = {}
-                        not_supported_punc_pattern = re.compile(r"[.:—]")
+                        not_supported_punc_pattern = re.compile(r'["—]')
                         if settings['voice_path'] is not None:
                             proc_dir = os.path.join(self.session['voice_dir'], 'proc')
                             os.makedirs(proc_dir, exist_ok=True)
@@ -663,7 +727,7 @@ class Coqui:
                             if tts_vc:
                                 settings['samplerate'] = TTS_VOICE_CONVERSION[self.tts_vc_key]['samplerate']
                                 source_wav = self._resample_wav(tmp_out_wav, settings['samplerate'])
-                                target_wav = self._resample_wav(settings['voice_path'], settings['samplerate'])
+                                target_wav = self._get_cached_resampled_target(settings['voice_path'], settings['samplerate'])
                                 audio_sentence = tts_vc.voice_conversion(
                                     source_wav=source_wav,
                                     target_wav=target_wav
@@ -734,7 +798,7 @@ class Coqui:
                             if tts_vc:
                                 settings['samplerate'] = TTS_VOICE_CONVERSION[self.tts_vc_key]['samplerate']
                                 source_wav = self._resample_wav(tmp_out_wav, settings['samplerate'])
-                                target_wav = self._resample_wav(settings['voice_path'], settings['samplerate'])
+                                target_wav = self._get_cached_resampled_target(settings['voice_path'], settings['samplerate'])
                                 audio_sentence = tts_vc.voice_conversion(
                                     source_wav=source_wav,
                                     target_wav=target_wav
@@ -781,6 +845,14 @@ class Coqui:
                             self.audio_segments.append(break_tensor.clone())
                         if self.audio_segments:
                             audio_tensor = torch.cat(self.audio_segments, dim=-1)
+                            # Reset the buffer now that its contents are merged into audio_tensor.
+                            # The success path below returns early (line ~868), so the later
+                            # `self.audio_segments = []` is never reached; without this reset every
+                            # sentence would re-concatenate all previous ones (files grow without
+                            # bound and the whole book is voiced repeatedly). Pause/break tokens
+                            # append to this buffer and return early, so their silence still carries
+                            # into the next sentence before this reset runs.
+                            self.audio_segments = []
                             start_time = self.sentences_total_time
                             duration = round((audio_tensor.shape[-1] / settings['samplerate']), 2)
                             end_time = start_time + duration
@@ -793,18 +865,44 @@ class Coqui:
                             }
                             self.sentence_idx = append_sentence2vtt(sentence_obj, self.vtt_path)
                             if self.sentence_idx:
+                                logging.info(f"Coqui.convert: Saving audio file {final_sentence_file}")
                                 torchaudio.save(final_sentence_file, audio_tensor, settings['samplerate'], format=default_audio_proc_format)
                                 del audio_tensor
+                                
+                                # Check if file was created successfully
+                                if os.path.exists(final_sentence_file):
+                                    file_size = os.path.getsize(final_sentence_file)
+                                    logging.info(f"Coqui.convert: Successfully created {final_sentence_file} (size: {file_size} bytes)")
+                                    return True
+                                else:
+                                    error = f"Cannot create {final_sentence_file}"
+                                    print(error)
+                                    logging.error(f"Coqui.convert: {error}")
+                                    return False
+                            else:
+                                error = f"Failed to append sentence to VTT file"
+                                print(error)
+                                logging.error(f"Coqui.convert: {error}")
+                                return False
                         self.audio_segments = []
                         if os.path.exists(final_sentence_file):
                             return True
                         else:
                             error = f"Cannot create {final_sentence_file}"
                             print(error)
+                            logging.error(f"Coqui.convert: {error}")
+                            return False
+                    else:
+                        error = f"Invalid audio data for sentence {sentence_number}"
+                        print(error)
+                        logging.error(f"Coqui.convert: {error}")
+                        return False
             else:
                 error = f"convert() error: {self.session['tts_engine']} is None"
                 print(error)
+                logging.error(f"Coqui.convert: {error}")
         except Exception as e:
-            error = f'Coquit.convert(): {e}'
+            error = f'Coqui.convert(): {e}'
+            logging.error(f"Coqui.convert: Exception occurred: {error}", exc_info=True)
             raise ValueError(e)
         return False

@@ -1,0 +1,63 @@
+# --- Python runtime artifacts ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.vscode/
+
+# --- Local virtual environments ---
+/env/
+
+# --- Runtime data: downloaded models, sessions, temp and output files ---
+/models/*
+!/models/.gitkeep
+/tmp/*
+!/tmp/.gitkeep
+/test_output/
+*.log
+/voices/__sessions/
+/voices/__bark/
+voices/**/*_temp.wav
+
+# --- Third-party sources cloned/copied for reference (pristine upstream code,
+# not ours). CosyVoice and MOSS-TTS-Nano are runtime deps of their TTS engines:
+# clone them from upstream when deploying (see README).
+/CosyVoice/
+/MOSS-TTS-Nano/
+/MisoTTS/
+/X-Voice/
+/DeepL_/
+/TranslateBooksWithLLMs/
+/audiblez/
+
+# --- Local test/debug scripts (kept on disk, not published) ---
+/test_*.py
+/simple_*.py
+/debug_*.py
+/check_*.py
+/demo_*.py
+/comprehensive_*.py
+/generate_kumardahl_npz.py
+/lib/translator.py
+/lib/translator_fixed.py
+*.py.backup
+/test_old.wav
+
+# --- Obsolete development reports ---
+/COLUMN_DETECTION_IMPROVEMENTS.md
+/COMPLETE_IMPROVEMENTS_SUMMARY.md
+/COMPREHENSIVE_FIX_TEST.md
+/COMPREHENSIVE_PDF_PROCESSING_FIXES.md
+/FIX_SUMMARY.md
+/IMPLEMENTATION_SUMMARY.md
+/PDF_CHAPTER_PROCESSING_FIX.md
+/PDF_PROCESSING_IMPROVEMENTS.md
+/TRANSLATION_FEATURE_SUMMARY.md
+/TRANSLATION_IMPROVEMENTS.md
+/TRANSLATION_IMPROVEMENTS_SUMMARY.md
+/test_column_detection.md
+
+# --- Test ebooks and other local artifacts ---
+/ubunturef*
+/__ubunturef.epub
+/Data_Driven_Healthcare_Revolutionizing_Patient_Care_with_Data_Science.epub
+/2025-11-08 18 09 48.png

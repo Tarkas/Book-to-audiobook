@@ -9,7 +9,10 @@ TTS_ENGINES = {
     "VITS": "vits", 
     "FAIRSEQ": "fairseq", 
     "TACOTRON2": "tacotron", 
-    "YOURTTS": "yourtts"
+    "YOURTTS": "yourtts",
+    "COSYVOICE": "cosyvoice",
+    "KOKORO": "kokoro",
+    "MOSSTTSNANO": "mosstts_nano"
 }
 
 TTS_VOICE_CONVERSION = {
@@ -153,6 +156,45 @@ default_engine_settings = {
         "files": ['config.json', 'model_file.pth'],
         "voices": {"Machinella-5": "female-en-5", "ElectroMale-2": "male-en-2", 'Machinella-4': 'female-pt-4\n', 'ElectroMale-3': 'male-pt-3\n'},
         "rating": {"GPU VRAM": 1, "CPU": 5, "RAM": 4, "Realism": 1}
+    },
+    TTS_ENGINES['COSYVOICE']: {
+        "samplerate": 24000,
+        "speed": 1.0,
+        "stream": False,
+        # text_frontend requires ttsfrd or wetext, fallback is a simple split
+        "text_frontend": True,
+        # natural language style instruction used by inference_instruct2() (empty = disabled)
+        "instruct_text": "",
+        "files": ['cosyvoice2.yaml', 'llm.pt', 'flow.pt', 'hift.pt', 'campplus.onnx', 'speech_tokenizer_v2.onnx'],
+        "voices": {},
+        "rating": {"GPU VRAM": 6, "CPU": 2, "RAM": 12, "Realism": 5}
+    },
+    TTS_ENGINES['KOKORO']: {
+        "samplerate": 24000,
+        "speed": 1.0,
+        # regex used by KPipeline to chunk long texts into generation segments
+        "split_pattern": r'\n\n\n',
+        "files": ['kokoro-v1_0.pth', 'config.json'],
+        # named voices: prefix = lang code letter + gender (f/m), from hexgrad/Kokoro-82M
+        "voices": {
+            "AfHeart": "af_heart", "AfAlloy": "af_alloy", "AfBella": "af_bella", "AfNicole": "af_nicole",
+            "AfSarah": "af_sarah", "AfSky": "af_sky", "AmAdam": "am_adam", "AmMichael": "am_michael",
+            "AmPuck": "am_puck", "BfAlice": "bf_alice", "BfEmma": "bf_emma", "BfIsabella": "bf_isabella",
+            "BmDaniel": "bm_daniel", "BmGeorge": "bm_george", "EfDora": "ef_dora", "EmAlex": "em_alex",
+            "FfSiwis": "ff_siwis", "HfAlpha": "hf_alpha", "HmOmega": "hm_omega", "IfSara": "if_sara",
+            "ImNicola": "im_nicola", "JfAlpha": "jf_alpha", "JmKumo": "jm_kumo", "PfDora": "pf_dora",
+            "PmAlex": "pm_alex", "ZfXiaobei": "zf_xiaobei", "ZmYunjian": "zm_yunjian"
+        },
+        "rating": {"GPU VRAM": 1, "CPU": 5, "RAM": 2, "Realism": 3}
+    },
+    TTS_ENGINES['MOSSTTSNANO']: {
+        "samplerate": 48000,
+        # ONNX CPU inference defaults (see MOSS-TTS-Nano/infer_onnx.py)
+        "max_new_frames": 375,
+        "voice_clone_max_text_tokens": 75,
+        "files": ['browser_poc_manifest.json', 'tokenizer.model'],
+        "voices": {},
+        "rating": {"GPU VRAM": 1, "CPU": 4, "RAM": 4, "Realism": 3}
     }
 }
 models = {
@@ -497,6 +539,35 @@ models = {
             "files": default_engine_settings[TTS_ENGINES['YOURTTS']]['files'],
             "samplerate": default_engine_settings[TTS_ENGINES['YOURTTS']]['samplerate']
         }
+    },
+    TTS_ENGINES['COSYVOICE']: {
+        "internal": {
+            "lang": "multi",
+            "repo": "iic/CosyVoice2-0.5B", # modelscope repo id, auto-downloaded on first use
+            "sub": "",
+            "voice": os.path.join(voices_dir, 'eng', 'adult', 'male', 'KumarDahl.wav'),
+            "files": default_engine_settings[TTS_ENGINES['COSYVOICE']]['files'],
+            "samplerate": default_engine_settings[TTS_ENGINES['COSYVOICE']]['samplerate']
+        }
+    },
+    TTS_ENGINES['KOKORO']: {
+        "internal": {
+            "lang": "multi",
+            "repo": "hexgrad/Kokoro-82M", # HF repo id, auto-downloaded by the kokoro package
+            "sub": "",
+            "voice": "af_heart", # named voice (no cloning support)
+            "files": default_engine_settings[TTS_ENGINES['KOKORO']]['files'],
+            "samplerate": default_engine_settings[TTS_ENGINES['KOKORO']]['samplerate']
+        }
+    },
+    TTS_ENGINES['MOSSTTSNANO']: {
+        "internal": {
+            "lang": "multi",
+            "repo": "OpenMOSS-Team/MOSS-TTS-Nano-100M-ONNX", # ONNX assets, auto-downloaded into MOSS-TTS-Nano/models on first use
+            "sub": "",
+            "voice": os.path.join(voices_dir, 'eng', 'adult', 'male', 'KumarDahl.wav'),
+            "files": default_engine_settings[TTS_ENGINES['MOSSTTSNANO']]['files'],
+            "samplerate": default_engine_settings[TTS_ENGINES['MOSSTTSNANO']]['samplerate']
+        }
     }
 }
-

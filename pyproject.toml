@@ -34,7 +34,7 @@ dependencies = [
 	"soynlp",
 	"pythainlp",
 	"pydub",
-	"pyannote-audio",
+	"pyannote-audio==3.1.1",
 	"mutagen",
 	"nvidia-ml-py",
 	"PyOpenGL",
@@ -48,8 +48,7 @@ dependencies = [
 	"sudachipy",
 	"sudachidict_core",
 	"transformers==4.51.3",
-	"coqui-tts[languages]==0.26.0",
-	"torchvggish"
+	"coqui-tts[languages]==0.26.0"
 ]
 readme = "README.md"
 requires-python = ">3.9,<3.13"

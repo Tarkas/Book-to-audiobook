@@ -39,23 +39,35 @@ from bark import SAMPLE_RATE, preload_models
 from bark.generation import codec_decode
 
 def npz_to_wav(npz_path, output_path):
-	preload_models()
-	data = np.load(npz_path)
-	fine_prompt = data["fine_prompt"]
-	audio_array = codec_decode(fine_prompt)
-	audio_tensor = torch.tensor(audio_array).unsqueeze(0)
-	torchaudio.save(output_path, audio_tensor, SAMPLE_RATE)
-	print(f"✅ Saved: {output_path}")
+    preload_models()
+    data = np.load(npz_path)
+    fine_prompt = data["fine_prompt"]
+    audio_array = codec_decode(fine_prompt)
+    audio_tensor = torch.tensor(audio_array).unsqueeze(0)
+    
+    # Use the new torchcodec API if available to avoid deprecation warning
+    try:
+        # Try to use the new save_with_torchcodec function
+        torchaudio.save_with_torchcodec(output_path, audio_tensor, SAMPLE_RATE)
+    except AttributeError:
+        # Fall back to the old save function if the new one is not available
+        torchaudio.save(output_path, audio_tensor, SAMPLE_RATE)
+    except Exception as e:
+        # If torchcodec fails for any reason, fall back to the old method
+        print(f"Warning: torchcodec failed with error: {e}. Falling back to torchaudio.save")
+        torchaudio.save(output_path, audio_tensor, SAMPLE_RATE)
+    
+    print(f"✅ Saved: {output_path}")
 
 def process_all_npz_in_folder(folder_path):
-	preload_models()
-	for npz_file in Path(folder_path).rglob("*.npz"):
-		output_path = npz_file.with_suffix(".wav")
-		npz_to_wav(str(npz_file), str(output_path))
+    preload_models()
+    for npz_file in Path(folder_path).rglob("*.npz"):
+        output_path = npz_file.with_suffix(".wav")
+        npz_to_wav(str(npz_file), str(output_path))
 
 if __name__ == "__main__":
-	parser = argparse.ArgumentParser(description="Process all NPZ files in a folder.")
-	parser.add_argument("--folder_path", type=str, required=True, help="Path to the folder containing NPZ files")
-	args = parser.parse_args()
-	folder_path = os.path.abspath(args.folder_path)
-	process_all_npz_in_folder(folder_path)
+    parser = argparse.ArgumentParser(description="Process all NPZ files in a folder.")
+    parser.add_argument("--folder_path", type=str, required=True, help="Path to the folder containing NPZ files")
+    args = parser.parse_args()
+    folder_path = os.path.abspath(args.folder_path)
+    process_all_npz_in_folder(folder_path)

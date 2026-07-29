@@ -14,14 +14,17 @@ class BackgroundDetector:
         model = Model.from_pretrained(default_voice_detection_model, cache_dir=tts_dir)
         self.pipeline = VoiceActivityDetection(segmentation=model)
         hyper_params = {
-          # onset/offset activation thresholds
-          "onset": 0.5, "offset": 0.5,
           # remove speech regions shorter than that many seconds.
           "min_duration_on": 0.0,
           # fill non-speech regions shorter than that many seconds.
           "min_duration_off": 0.0
         }
-        self.pipeline.instantiate(hyper_params)
+        try:
+            # onset/offset activation thresholds (only supported by older segmentation models)
+            self.pipeline.instantiate({**hyper_params, "onset": 0.5, "offset": 0.5})
+        except Exception:
+            # pyannote 3.x powerset models (e.g. segmentation-3.0) have no onset/offset hyper-parameters
+            self.pipeline.instantiate(hyper_params)
 
     def detect(self, vad_ratio_thresh: float=0.05):
         diarization     = self.pipeline(self.wav_file)

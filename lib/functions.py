@@ -219,13 +219,20 @@ def prepare_dirs(src, session):
 
 def check_programs(prog_name, command, options):
     try:
+        # Force software OpenGL and an offscreen Qt platform so calibre's Qt does not emit
+        # "LoadLibrary failed with error 1114" (DLL init failure) on hybrid graphics / faulty
+        # GPU drivers. Harmless for other tools.
+        prog_env = dict(os.environ)
+        prog_env['QT_OPENGL'] = 'software'
+        prog_env['QT_QPA_PLATFORM'] = 'offscreen'
         subprocess.run(
             [command, options],
             stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE,
             check=True,
             text=True,
-            encoding='utf-8'
+            encoding='utf-8',
+            env=prog_env
         )
         return True, None
     except FileNotFoundError:
@@ -429,14 +436,30 @@ def convert2epub(id):
             cmd += ['--title', title]
         if author:
             cmd += ['--authors', author]
+        # Force software OpenGL and an offscreen Qt platform for calibre's Qt. The EPUB
+        # Output "Generating default cover" step spins up Qt's image renderer, which fails
+        # DLL init (exit code 1114) on hybrid graphics / faulty GPU drivers even with
+        # QT_OPENGL=software alone; QT_QPA_PLATFORM=offscreen makes cover generation succeed.
+        calibre_env = dict(os.environ)
+        calibre_env['QT_OPENGL'] = 'software'
+        calibre_env['QT_QPA_PLATFORM'] = 'offscreen'
         result = subprocess.run(
             cmd,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            encoding='utf-8'
+            encoding='utf-8',
+            env=calibre_env
         )
         print(result.stdout)
+        if result.returncode != 0:
+            error = f'convert2epub(): ebook-convert failed (exit code {result.returncode}):\n{result.stderr}'
+            print(error)
+            return False
+        if not os.path.exists(session['epub_path']) or os.path.getsize(session['epub_path']) == 0:
+            error = f"convert2epub(): ebook-convert did not create {session['epub_path']}:\n{result.stderr}"
+            print(error)
+            return False
         return True
     except subprocess.CalledProcessError as e:
         print(f"Subprocess error: {e.stderr}")
@@ -615,7 +638,9 @@ def filter_chapter(doc, lang, lang_iso1, tts_engine, stanza_nlp, is_num2words_co
         proc_tags = heading_tags + break_tags + pause_tags
         raw_html = doc.get_body_content().decode("utf-8")
         soup = BeautifulSoup(raw_html, 'html.parser')
-        body = soup.body
+        # Handle case where raw_html doesn't contain <body> tag
+        # get_body_content() returns content that would be inside <body>, not including the tag itself
+        body = soup.body if soup.body else soup
         if not body or not body.get_text(strip=True):
             return []
         # Skip known non-chapter types
@@ -1204,20 +1229,21 @@ def clock2words(text, lang, lang_iso1, tts_engine, is_num2words_compat):
             else:
                 phrase = lc["oclock"].format(hour=n2w(h))
         elif mnt == 15:
-            phrase = lc["quarter_past"].format(hour=n2w(h))
+            phrase = lc["quarter_past"].format(hour=n2w(h), next_hour=n2w(next_hour))
         elif mnt == 30:
-            # German "halb drei" (= 2:30) uses next hour
-            if lang_lc == "deu":
-                phrase = lc["half_past"].format(next_hour=n2w(next_hour))
-            else:
-                phrase = lc["half_past"].format(hour=n2w(h))
+            # Some languages phrase the half hour against the current hour ("half past two"),
+            # others against the next one (German "halb drei", Polish "wpół do trzeciej",
+            # Russian "половина третьего"). Pass both so the template picks what it needs.
+            phrase = lc["half_past"].format(hour=n2w(h), next_hour=n2w(next_hour))
         elif mnt == 45:
-            phrase = lc["quarter_to"].format(next_hour=n2w(next_hour))
+            phrase = lc["quarter_to"].format(hour=n2w(h), next_hour=n2w(next_hour))
         elif mnt < 30:
             phrase = lc["past"].format(hour=n2w(h), minute=n2w(mnt)) if mnt != 0 else lc["oclock"].format(hour=n2w(h))
         else:
             minute_to_hour = 60 - mnt
-            phrase = lc["to"].format(next_hour=n2w(next_hour), minute=n2w(minute_to_hour))
+            # "to" templates use either {minute} (English "5 to 3") or {minute_to_hour}
+            # (Russian "без 5 минут три"); both mean 60-mnt, so provide both names.
+            phrase = lc["to"].format(next_hour=n2w(next_hour), minute=n2w(minute_to_hour), minute_to_hour=n2w(minute_to_hour))
         # Append seconds if present
         if sec is not None and sec > 0:
             second_phrase = lc["second"].format(second=n2w(sec))
@@ -1664,6 +1690,14 @@ def combine_audio_chapters(id):
                 filepath = os.path.join(session['chapters_dir'], filename)
                 duration_ms = len(AudioSegment.from_file(filepath, format=default_audio_proc_format))
                 clean_title = re.sub(r'(^#)|[=\\]|(-$)', lambda m: '\\' + (m.group(1) or m.group(0)), chapter_title.replace(TTS_SML['pause'], ''))
+                # The MP4/Nero 'chpl' chapter atom stores each title as a byte-length-prefixed
+                # string capped at 255 bytes. ffmpeg truncates longer titles blindly, which can
+                # split a multibyte UTF-8 character and make the file unreadable (mutagen then
+                # raises UnicodeDecodeError when re-opening it to add the cover). Trim to a safe
+                # byte length on a character boundary; 'ignore' drops any trailing partial char.
+                title_bytes = clean_title.encode('utf-8')
+                if len(title_bytes) > 240:
+                    clean_title = title_bytes[:240].decode('utf-8', 'ignore').rstrip()
                 ffmpeg_metadata += '[CHAPTER]\nTIMEBASE=1/1000\n'
                 ffmpeg_metadata += f'START={start_time}\nEND={start_time + duration_ms}\n'
                 ffmpeg_metadata += f"{tag('title')}={clean_title}\n"
@@ -1676,7 +1710,7 @@ def combine_audio_chapters(id):
             print(error)
             return False
 
-    def export_audio(ffmpeg_combined_audio, ffmpeg_metadata_file, ffmpeg_final_file):
+    def export_audio(ffmpeg_combined_audio, ffmpeg_metadata_file, ffmpeg_final_file, session):
         try:
             if session['cancellation_requested']:
                 print('Cancel requested')
@@ -1833,7 +1867,7 @@ def combine_audio_chapters(id):
                         session['audiobooks_dir'],
                         f"{session['final_name'].rsplit('.', 1)[0]}_part{part_idx+1}.{session['output_format']}" if needs_split else session['final_name']
                     )
-                    if export_audio(combined_chapters_file, metadata_file, final_file):
+                    if export_audio(combined_chapters_file, metadata_file, final_file, session):
                         exported_files.append(final_file)
         else:
             with tempfile.TemporaryDirectory() as tmpdir:
@@ -1860,7 +1894,7 @@ def combine_audio_chapters(id):
                     session['audiobooks_dir'],
                     session['final_name']
                 )
-                if export_audio(merged_tmp, metadata_file, final_file):
+                if export_audio(merged_tmp, metadata_file, final_file, session):
                     exported_files.append(final_file)
         return exported_files if exported_files else None
     except Exception as e:
@@ -1941,11 +1975,11 @@ def convert_ebook(args, ctx=None):
             if not os.path.splitext(args['ebook'])[1]:
                 error = f"{args['ebook']} needs a format extension."
                 print(error)
-                return error, false
+                return error, False
             if not os.path.exists(args['ebook']):
                 error = 'File does not exist or Directory empty.'
                 print(error)
-                return error, false
+                return error, False
             try:
                 if len(args['language']) == 2:
                     lang_array = languages.get(part1=args['language'])
@@ -1965,7 +1999,7 @@ def convert_ebook(args, ctx=None):
             if args['language'] not in language_mapping.keys():
                 error = 'The language you provided is not (yet) supported'
                 print(error)
-                return error, false
+                return error, False
 
             if ctx is not None:
                 context = ctx
@@ -2022,7 +2056,8 @@ def convert_ebook(args, ctx=None):
                                 error = f"{model} could not be extracted or mandatory files are missing"
                         else:
                             error = f'{os.path.basename(f)} is not a valid model or some required files are missing'
-                if session['voice'] is not None:                  
+                if session['voice'] is not None and os.path.isfile(session['voice']):
+                    # engine preset names (e.g. kokoro 'af_heart') are not files: the engine resolves them itself
                     voice_name = get_sanitized(os.path.splitext(os.path.basename(session['voice']))[0])
                     final_voice_file = os.path.join(session['voice_dir'], f'{voice_name}.wav')
                     if not os.path.exists(final_voice_file):
@@ -2493,6 +2528,16 @@ def web_interface(args, ctx):
                                 <div style="right:0;margin:auto;padding:10px;text-align:right">
                                     <a href="https://github.com/DrewThomasson/ebook2audiobook" style="text-decoration:none;font-size:14px" target="_blank">
                                     <b>{title}</b>&nbsp;<b style="color:orange">{prog_version}</b></a>
+                                </div>
+                                '''
+                            )
+                            # cloud conversion shortcuts: run the whole app on a free GPU (see Notebooks folder)
+                            gr_cloud_markdown = gr.Markdown(elem_id='gr_cloud_markdown', value='''
+                                <div style="right:0;margin:auto;padding:0 10px 10px 10px;text-align:right;font-size:13px">
+                                    ☁️ Convert in the cloud:&nbsp;
+                                    <a href="https://colab.research.google.com/github/DrewThomasson/ebook2audiobook/blob/main/Notebooks/colab_ebook2audiobook.ipynb" target="_blank"><b>Google Colab</b></a>
+                                    &nbsp;|&nbsp;
+                                    <a href="https://github.com/Rihcus/ebook2audiobookXTTS/blob/main/Notebooks/kaggle-ebook2audiobook.ipynb" target="_blank"><b>Kaggle</b></a>
                                 </div>
                                 '''
                             )

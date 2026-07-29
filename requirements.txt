@@ -3,6 +3,9 @@ beautifulsoup4
 cutlet
 deep_translator
 demucs
+# julius is a demucs dependency shipped as sdist only: pin it so pip does not
+# backtrack through every version (very slow metadata builds)
+julius==0.2.7
 docker
 ebooklib
 fastapi
@@ -13,13 +16,22 @@ indic-nlp-library
 iso-639
 jieba
 soynlp
-num2words
+num2words>=0.5.14
 pythainlp
 mutagen
 nvidia-ml-py
 phonemizer-fork
 pydub
-pyannote-audio
+# speechbrain 1.1.0 added a lazy speechbrain.integrations.k2_fsa module that raises
+# ImportError (k2 not installed) when pytorch_lightning walks sys.modules during
+# pyannote Model.from_pretrained, breaking voice background detection. 1.0.0 has no
+# such integrations package and satisfies pyannote-audio (needs only >=0.5.14).
+speechbrain==1.0.0
+pyannote-audio==3.1.1
+pyannote.core==5.0.0
+pyannote.metrics==3.2.1
+pyannote.database==5.1.3
+pyannote.pipeline==3.0.1
 PyOpenGL
 pypinyin
 ray
@@ -32,4 +44,35 @@ sudachipy
 sudachidict_core
 transformers==4.51.3
 coqui-tts[languages]==0.26.0
-torchvggish
+numpy==1.26.4
+torchaudio==2.1.0
+torch==2.1.0
+torchvision==0.16.0
+packaging
+# setuptools>=81 removed pkg_resources, which the iso-639 package still imports
+# (breaks language code resolution in convert_ebook). Pin below that release.
+setuptools<81
+Pillow
+pymupdf
+starlette
+psutil
+stanza
+sacremoses
+sentencepiece
+# CosyVoice engine (lib/classes/tts_engines/cosyvoice.py) inference dependencies
+conformer==0.3.2
+diffusers
+HyperPyYAML
+inflect
+modelscope
+omegaconf
+onnx
+onnxruntime
+openai-whisper
+tiktoken
+wetext
+# Kokoro-82M engine (lib/classes/tts_engines/kokoro.py), ported from audiblez
+kokoro>=0.9.2
+# MOSS-TTS-Nano engine (lib/classes/tts_engines/mosstts_nano.py) uses the ONNX CPU
+# runtime shipped in ./MOSS-TTS-Nano: onnxruntime, sentencepiece and huggingface_hub
+# are already listed above, no extra dependencies required.

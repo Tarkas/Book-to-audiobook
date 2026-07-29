@@ -60,7 +60,7 @@ def check_and_install_requirements(file_path):
             packages = [
                 pkg.strip()
                 for pkg in contents.splitlines()
-                if pkg.strip() and re.search(r'[a-zA-Z0-9]', pkg)
+                if pkg.strip() and not pkg.strip().startswith('#') and re.search(r'[a-zA-Z0-9]', pkg)
             ]
         missing_packages = []
         for package in packages:
@@ -69,11 +69,6 @@ def check_and_install_requirements(file_path):
             pkg_name  = re.split(r'[<>=]', clean_pkg, 1)[0].strip()
             try:
                 installed_version = version(pkg_name)
-                if pkg_name == 'num2words':
-                    code = "ZH_CN"
-                    spec = importlib.util.find_spec(f"num2words.lang_{code}")
-                    if spec is None:
-                        missing_packages.append(package)
             except PackageNotFoundError:
                 error = f'{package} is missing.'
                 print(error)
@@ -100,10 +95,7 @@ def check_and_install_requirements(file_path):
                       unit='step') as t:
                 for package in tqdm(missing_packages, desc="Installing", unit="pkg"):
                     try:
-                        if package == 'num2words':
-                            pkgs = ['git+https://github.com/savoirfairelinux/num2words.git', '--force']
-                        else:
-                            pkgs = [package]
+                        pkgs = [package]
                         subprocess.check_call([
                             sys.executable, '-m', 'pip', 'install',
                             '--no-cache-dir', '--use-pep517',
@@ -123,18 +115,29 @@ def check_and_install_requirements(file_path):
         return False
        
 def check_dictionary():
-    import unidic
-    unidic_path = unidic.DICDIR
-    dicrc = os.path.join(unidic_path, 'dicrc')
-    if not os.path.exists(dicrc) or os.path.getsize(dicrc) == 0:
-        try:
-            error = 'UniDic dictionary not found or incomplete. Downloading now...'
-            print(error)
-            subprocess.run(['python', '-m', 'unidic', 'download'], check=True)
-        except subprocess.CalledProcessError as e:
-            error = f'Failed to download UniDic dictionary. Error: {e}. Unable to continue without UniDic. Exiting...'
-            raise SystemExit(error)
-            return False
+    try:
+        import unidic
+        unidic_path = unidic.DICDIR
+        dicrc = os.path.join(unidic_path, 'dicrc')
+        # The dictionary lives inside this interpreter's site-packages (unidic.DICDIR).
+        # Once the files exist they persist across launches, so we only download when
+        # they are genuinely missing/incomplete instead of on every startup.
+        if not os.path.exists(dicrc) or os.path.getsize(dicrc) == 0:
+            try:
+                error = 'UniDic dictionary not found or incomplete. Downloading now (one-time)...'
+                print(error)
+                # Use sys.executable (not a bare 'python') so the dictionary is installed
+                # into THIS environment - the same one unidic.DICDIR points to. Otherwise
+                # the download lands in another Python and the check keeps failing every run.
+                subprocess.run([sys.executable, '-m', 'unidic', 'download'], check=True)
+            except subprocess.CalledProcessError as e:
+                warning = f'Warning: Failed to download UniDic dictionary. Error: {e}. Japanese language processing may not work correctly.'
+                print(warning)
+                # Continue execution as UniDic is only needed for Japanese processing
+    except ImportError as e:
+        warning = f'Warning: UniDic module not found. Japanese language processing may not work correctly. Error: {e}'
+        print(warning)
+        # Continue execution as UniDic is only needed for Japanese processing
     return True
 
 def is_port_in_use(port):
@@ -168,7 +171,8 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
         '--custom_model', '--fine_tuned', '--output_format',
         '--temperature', '--length_penalty', '--num_beams', '--repetition_penalty', '--top_k', '--top_p', '--speed', '--enable_text_splitting',
         '--text_temp', '--waveform_temp',
-        '--output_dir', '--version', '--workflow', '--help'
+        '--output_dir', '--version', '--workflow', '--help',
+        '--translate', '--source_lang', '--target_lang', '--translation_method'
     ]
     tts_engine_list_keys = [k for k in TTS_ENGINES.keys()]
     tts_engine_list_values = [k for k in TTS_ENGINES.values()]
@@ -184,7 +188,8 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
     headless_group.add_argument(options[5], type=str, help=f'''Relative or absolute path of the directory containing the files to convert. 
     Cannot be used when --ebook is present.''')
     headless_group.add_argument(options[6], type=str, default=default_language_code, help=f'''Language of the e-book. Default language is set 
-    in ./lib/lang.py sed as default if not present. All compatible language codes are in ./lib/lang.py''')
+    in ./lib/lang.py sed as default if not present. All compatible language codes are in ./lib/lang.py. 
+    Additional language aliases are available in ./lib/language_codes.py''')
     headless_optional_group = parser.add_argument_group('optional parameters')
     headless_optional_group.add_argument(options[7], type=str, default=None, help='''(Optional) Path to the voice cloning file for TTS engine. 
     Uses the default voice if not present.''')
@@ -220,6 +225,10 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
     headless_optional_group.add_argument(options[23], type=str, help=f'''(Optional) Path to the output directory. Default is set in ./lib/conf.py''')
     headless_optional_group.add_argument(options[24], action='version', version=f'ebook2audiobook version {prog_version}', help='''Show the version of the script and exit''')
     headless_optional_group.add_argument(options[25], action='store_true', help=argparse.SUPPRESS)
+    headless_optional_group.add_argument('--translate', action='store_true', help='''(Optional, headless) Translate the ebook before conversion.''')
+    headless_optional_group.add_argument('--source_lang', type=str, default=None, help='''(Optional, headless) Source language code for --translate.''')
+    headless_optional_group.add_argument('--target_lang', type=str, default=None, help='''(Optional, headless) Target language code for --translate. Defaults to --language.''')
+    headless_optional_group.add_argument('--translation_method', type=str, default='google', choices=['google', 'deepl', 'deepl_parser', 'argos'], help='''(Optional, headless) Translation backend for --translate.''')
     
     for arg in sys.argv:
         if arg.startswith('--') and arg not in options:
@@ -252,8 +261,9 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
         if args['script_mode'] == NATIVE:
             check_pkg = check_and_install_requirements(requirements_file)
             if check_pkg:
-                if not check_dictionary():
-                    sys.exit(1)
+                # Check UniDic dictionary but don't exit if it fails
+                # UniDic is only needed for Japanese language processing
+                check_dictionary()
             else:
                 error = 'Some packages could not be installed'
                 print(error)
@@ -307,6 +317,30 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
                     error = f'Error: The provided --ebook "{args["ebook"]}" does not exist.'
                     print(error)
                     sys.exit(1) 
+                # Optional pre-conversion translation (headless). Mirrors the tkinter UI
+                # translation step so the cloud/CLI path can translate before converting.
+                if args.get('translate'):
+                    src_lang = args.get('source_lang')
+                    tgt_lang = args.get('target_lang') or args.get('language')
+                    if src_lang and tgt_lang and src_lang != tgt_lang:
+                        try:
+                            from lib.improved_translator import translate_ebook_file
+                            tmp_dir = tempfile.mkdtemp()
+                            base = os.path.basename(args['ebook'])
+                            stem, ext = os.path.splitext(base)
+                            out_name = f'translated_{stem}.md' if ext.lower() == '.pdf' else f'translated_{base}'
+                            out_path = os.path.join(tmp_dir, out_name)
+                            print(f"Translating ebook {src_lang} -> {tgt_lang} using {args['translation_method']}...")
+                            translated = translate_ebook_file(args['ebook'], src_lang, tgt_lang, args['translation_method'], out_path, tmp_dir, None)
+                            if translated and os.path.exists(translated):
+                                args['ebook'] = os.path.abspath(translated)
+                                print(f"Translation complete: {args['ebook']}")
+                            else:
+                                print('Translation produced no file; converting the original ebook.')
+                        except Exception as translate_error:
+                            print(f'Translation failed ({translate_error}); converting the original ebook.')
+                    else:
+                        print('Translation skipped (missing or identical source/target language).')
                 progress_status, passed = convert_ebook(args, ctx)
                 if passed is False:
                     error = f'Conversion failed: {progress_status}'
@@ -317,14 +351,12 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
                 print(error)
                 sys.exit(1)       
         else:
-            args['is_gui_process'] = True
-            passed_arguments = sys.argv[1:]
-            allowed_arguments = {'--share', '--script_mode'}
-            passed_args_set = {arg for arg in passed_arguments if arg.startswith('--')}
-            if passed_args_set.issubset(allowed_arguments):
-                 web_interface(args, ctx)
-            else:
-                error = 'Error: In non-headless mode, no option or only --share can be passed'
+            # Use tkinter interface instead of Gradio
+            try:
+                from tkinter_ui import main as tkinter_main
+                tkinter_main()
+            except ImportError:
+                error = 'Error: tkinter_ui module not found. Please make sure it exists.'
                 print(error)
                 sys.exit(1)
 if __name__ == '__main__':
