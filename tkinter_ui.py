@@ -197,14 +197,33 @@ class Ebook2AudiobookGUI:
 
         # Window/taskbar icon (book in headphones). Looked up next to this module
         # (source checkout / frozen _internal) and in the working directory (exe dir).
+        # Without an explicit AppUserModelID Windows groups the window under
+        # python.exe and shows the Python icon in the taskbar instead of ours.
+        if sys.platform == 'win32':
+            try:
+                import ctypes
+                ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Tarkas.ebook2audiobook')
+            except Exception:
+                pass
         for icon_dir in (os.path.dirname(os.path.abspath(__file__)), os.getcwd()):
-            icon_path = os.path.join(icon_dir, 'app_icon.png')
-            if os.path.exists(icon_path):
+            ico_path = os.path.join(icon_dir, 'app_icon.ico')
+            png_path = os.path.join(icon_dir, 'app_icon.png')
+            applied = False
+            if sys.platform == 'win32' and os.path.exists(ico_path):
                 try:
-                    self._app_icon = tk.PhotoImage(file=icon_path)
-                    self.root.iconphoto(True, self._app_icon)
+                    # default= also covers child windows (dialogs, popups)
+                    self.root.iconbitmap(default=ico_path)
+                    applied = True
                 except tk.TclError:
                     pass
+            if os.path.exists(png_path):
+                try:
+                    self._app_icon = tk.PhotoImage(file=png_path)
+                    self.root.iconphoto(True, self._app_icon)
+                    applied = True
+                except tk.TclError:
+                    pass
+            if applied:
                 break
         
         # Variables

@@ -17,6 +17,7 @@ project_dir = os.path.abspath('.')
 datas = [
     ('VERSION.txt', '.'),
     ('app_icon.png', '.'),
+    ('app_icon.ico', '.'),
     ('lib', 'lib'),
     ('DeeplParser-main', 'DeeplParser-main'),
 ]
