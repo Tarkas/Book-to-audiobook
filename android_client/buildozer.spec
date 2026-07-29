@@ -13,6 +13,13 @@ version = 1.0
 
 requirements = python3,kivy==2.3.0,pyjnius
 
+# Pin a known-good toolchain: this p4a release targets Python 3.10 on the
+# device, matching kivy 2.3.0 cythonized with Cython 0.29.x. p4a master
+# targets Python 3.14 whose C API breaks the kivy build (too few arguments /
+# _PyInterpreterState_GetConfig errors).
+p4a.branch = release-2024.01.21
+android.ndk = 25b
+
 orientation = portrait
 fullscreen = 0
 
