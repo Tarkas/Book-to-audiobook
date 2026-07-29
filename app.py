@@ -228,7 +228,7 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
     headless_optional_group.add_argument('--translate', action='store_true', help='''(Optional, headless) Translate the ebook before conversion.''')
     headless_optional_group.add_argument('--source_lang', type=str, default=None, help='''(Optional, headless) Source language code for --translate.''')
     headless_optional_group.add_argument('--target_lang', type=str, default=None, help='''(Optional, headless) Target language code for --translate. Defaults to --language.''')
-    headless_optional_group.add_argument('--translation_method', type=str, default='google', choices=['google', 'deepl', 'deepl_parser', 'argos'], help='''(Optional, headless) Translation backend for --translate.''')
+    headless_optional_group.add_argument('--translation_method', type=str, default='google', choices=['google', 'deepl', 'deepl_parser', 'argos', 'llm'], help='''(Optional, headless) Translation backend for --translate.''')
     
     for arg in sys.argv:
         if arg.startswith('--') and arg not in options:

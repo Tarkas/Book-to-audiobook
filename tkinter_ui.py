@@ -486,7 +486,7 @@ class Ebook2AudiobookGUI:
         
         ttk.Label(translation_tab, text="Translation Method:").grid(row=3, column=0, sticky="w", pady=5)
         self.method_combo = ttk.Combobox(translation_tab, textvariable=self.translation_method, width=20)
-        self.method_combo['values'] = ['google', 'deepl', 'deepl_parser', 'argos']
+        self.method_combo['values'] = ['google', 'deepl', 'deepl_parser', 'argos', 'llm']
         self.method_combo.grid(row=3, column=1, sticky="w", pady=5, padx=(10, 0))
         
         ttk.Label(translation_tab, text="Note: Translation requires internet connection for Google Translate").grid(row=4, column=0, columnspan=2, sticky="w", pady=(10, 0))

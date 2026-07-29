@@ -485,10 +485,54 @@ ebook2audiobook supports translating your eBooks before converting them to audio
 
 ### Supported Translation Methods
 
-1. **Google Translate** - Online translation service (requires internet connection)
-2. **DeepL Official** - Official DeepL API (requires API key, highest quality)
-3. **DeepL Parser** - Web-based parser implementation (no API key required)
-4. **Argos Translate** - Offline translation engine (no internet required)
+| Method | API key | Internet | Notes |
+|---|---|---|---|
+| `google` (Google Translate) | not needed | required | works out of the box, default |
+| `deepl` (DeepL Official API) | **required** | required | highest quality; free tier: 500k chars/month |
+| `deepl_parser` (DeepL web) | not needed | required | scrapes deepl.com via headless Chrome; needs ChromeDriver |
+| `argos` (Argos Translate) | not needed | first use only | fully offline; language packs auto-download on first use |
+| `llm` (local/remote LLM) | optional | no (local server) | any OpenAI-compatible server: Ollama, LM Studio, llama.cpp, vLLM |
+
+### Method setup
+
+**google** — nothing to configure. For Ukrainian target the app automatically pivots through Russian (`xx -> ru -> uk`) for better quality.
+
+**deepl** — needs an API key:
+1. Get a key at https://www.deepl.com/pro-api (free tier available).
+2. Set the `DEEPL_API_KEY` environment variable:
+   - Windows (PowerShell): `$env:DEEPL_API_KEY="your-key"`
+   - Linux/macOS: `export DEEPL_API_KEY=your-key`
+   - or edit `DEEPL_API_KEY` in `lib/conf.py` directly.
+3. Details: [DEEPL_API_KEY_SETUP.md](DEEPL_API_KEY_SETUP.md).
+
+**deepl_parser** — no key, but needs Google Chrome + ChromeDriver:
+1. Download ChromeDriver matching your Chrome version: https://chromedriver.chromium.org/
+2. Place it at `C:/chromedriver/chromedriver.exe` (default path) or change `CHROMEDRIVER_PATH` in `lib/deepl_parser.py`.
+3. DeepL may show a CAPTCHA under heavy use; the app then falls back to Google Translate automatically. Details: [DEEPL_INTEGRATION.md](DEEPL_INTEGRATION.md).
+
+**argos** — install-free: language packages download automatically on first use of each pair, then translation is fully offline. Ukrainian target pivots through Russian automatically when the direct pair is weak.
+
+**llm** — translate with a local (free) or remote LLM through any OpenAI-compatible `/v1/chat/completions` endpoint. Configured with environment variables:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `LLM_API_ENDPOINT` | `http://localhost:11434/v1/chat/completions` | Ollama's default port **11434**; for LM Studio use `http://localhost:1234/v1/chat/completions`, for llama.cpp server `http://localhost:8080/v1/chat/completions` |
+| `LLM_MODEL` | `qwen3:14b` | model name as known to your server (`ollama list`) |
+| `LLM_API_KEY` | *(empty)* | only for remote/keyed servers; sent as `Bearer` header |
+
+Example with Ollama (Windows PowerShell):
+```powershell
+ollama pull qwen3:14b        # once
+ollama serve                 # if not already running (port 11434)
+# defaults match Ollama, so just pick "llm" in the Translation tab
+```
+Example with LM Studio:
+```powershell
+$env:LLM_API_ENDPOINT="http://localhost:1234/v1/chat/completions"
+$env:LLM_MODEL="loaded-model-name"
+```
+
+Before a long book is translated the app runs a preflight check and writes to the log which methods work for your language pair and why the broken ones fail.
 
 ### How to Use Translation
 
@@ -508,6 +552,7 @@ Translation is available for a wide range of languages. The exact languages supp
 - **Google Translate**: Supports 100+ languages
 - **DeepL**: Supports 30+ languages with high quality
 - **Argos Translate**: Supports 60+ languages offline
+- **LLM**: language-agnostic - depends only on the model you run
 
 
 ## Supported eBook Formats
