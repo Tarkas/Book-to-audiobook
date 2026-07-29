@@ -194,6 +194,18 @@ class Ebook2AudiobookGUI:
         self.root.title(f"ebook2audiobook v{prog_version}")
         self.root.geometry("850x750")
         self.root.minsize(650, 550)
+
+        # Window/taskbar icon (book in headphones). Looked up next to this module
+        # (source checkout / frozen _internal) and in the working directory (exe dir).
+        for icon_dir in (os.path.dirname(os.path.abspath(__file__)), os.getcwd()):
+            icon_path = os.path.join(icon_dir, 'app_icon.png')
+            if os.path.exists(icon_path):
+                try:
+                    self._app_icon = tk.PhotoImage(file=icon_path)
+                    self.root.iconphoto(True, self._app_icon)
+                except tk.TclError:
+                    pass
+                break
         
         # Variables
         self.ebook_path = tk.StringVar()

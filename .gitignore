@@ -7,6 +7,10 @@ __pycache__/
 # --- Local virtual environments ---
 /env/
 
+# --- PyInstaller build artifacts ---
+/build/
+/dist/
+
 # --- Runtime data: downloaded models, sessions, temp and output files ---
 /models/*
 !/models/.gitkeep

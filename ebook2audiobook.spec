@@ -16,6 +16,7 @@ project_dir = os.path.abspath('.')
 
 datas = [
     ('VERSION.txt', '.'),
+    ('app_icon.png', '.'),
     ('lib', 'lib'),
     ('DeeplParser-main', 'DeeplParser-main'),
 ]
@@ -101,7 +102,7 @@ exe = EXE(
     strip=False,
     upx=False,
     console=True,  # keep the console: conversion progress is printed there
-    icon='favicon.ico',
+    icon='app_icon.ico',
 )
 
 coll = COLLECT(

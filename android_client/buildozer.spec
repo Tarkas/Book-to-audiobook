@@ -7,6 +7,8 @@ package.name = ebook2audiobook_client
 package.domain = org.tarkas
 source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
+icon.filename = %(source.dir)s/icon.png
+presplash.filename = %(source.dir)s/icon.png
 version = 1.0
 
 requirements = python3,kivy==2.3.0,pyjnius
