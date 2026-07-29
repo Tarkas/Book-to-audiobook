@@ -54,6 +54,7 @@ for pkg in (
     'librosa', 'scipy', 'sklearn', 'gruut', 'anyascii', 'inflect',
     'pydub', 'soundfile', 'audioread', 'noisereduce', 'pyannote',
     'speechbrain', 'onnxruntime', 'uvicorn', 'starlette', 'fastapi',
+    'lightning_fabric', 'pytorch_lightning',  # need their version.info data files
 ):
     try:
         d, b, h = collect_all(pkg)
