@@ -20,7 +20,8 @@ fullscreen = 0
 android.api = 30
 android.minapi = 29
 android.ndk_api = 29
-android.archs = arm64-v8a, armeabi-v7a
+# arm64 covers all Android 10/11 phones; single arch = faster, simpler build
+android.archs = arm64-v8a
 android.permissions = INTERNET
 
 # Accept SDK licenses automatically inside CI/Colab
