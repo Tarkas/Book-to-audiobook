@@ -22,13 +22,13 @@ from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
-from kivy.uix.checkbox import CheckBox
 from kivy.uix.gridlayout import GridLayout
 from kivy.uix.label import Label
 from kivy.uix.popup import Popup
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.spinner import Spinner
 from kivy.uix.textinput import TextInput
+from kivy.uix.togglebutton import ToggleButton
 
 # Must match CLOUD_REPO / CLOUD_BRANCH in tkinter_ui.py
 CLOUD_REPO = 'Tarkas/Book-to-audiobook'
@@ -237,16 +237,21 @@ class Ebook2AudiobookClient(App):
                                multiline=False, input_filter='float')
         form.add_widget(self.speed)
 
-        # Translation block, mirrors the desktop Translation tab
-        tr_row = BoxLayout(orientation='horizontal', size_hint_y=None,
-                           height=dp(44))
-        self.translate = CheckBox(size_hint_x=None, width=dp(44))
-        tr_lbl = Label(text='Перевести книгу перед озвучкой', halign='left',
-                       valign='middle')
-        tr_lbl.bind(size=lambda l, s: setattr(l, 'text_size', s))
-        tr_row.add_widget(self.translate)
-        tr_row.add_widget(tr_lbl)
-        form.add_widget(tr_row)
+        # Translation toggle: a big colored button instead of a checkbox (the
+        # stock Kivy checkbox is nearly invisible on phone screens).
+        self.translate = ToggleButton(text='Перевод: выключен',
+                                      size_hint_y=None, height=dp(56),
+                                      background_color=(0.55, 0.55, 0.55, 1))
+
+        def _tr_toggle(btn, *_):
+            on = btn.state == 'down'
+            btn.text = ('Перевод: ВКЛЮЧЁН — книга будет переведена'
+                        if on else 'Перевод: выключен')
+            btn.background_color = ((0.2, 0.7, 0.2, 1) if on
+                                    else (0.55, 0.55, 0.55, 1))
+
+        self.translate.bind(state=_tr_toggle)
+        form.add_widget(self.translate)
 
         label('Язык оригинала:')
         self.source_lang = LanguagePicker(default_code='eng')
@@ -291,7 +296,7 @@ class Ebook2AudiobookClient(App):
             cfg['speed'] = float(self.speed.text)
         except ValueError:
             pass
-        if self.translate.active:
+        if self.translate.state == 'down':
             cfg['translate'] = True
             cfg['source_lang'] = self.source_lang.selected_code
             cfg['target_lang'] = self.target_lang.selected_code
