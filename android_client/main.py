@@ -241,14 +241,14 @@ class Ebook2AudiobookClient(App):
         # stock Kivy checkbox is nearly invisible on phone screens).
         self.translate = ToggleButton(text='Перевод: выключен',
                                       size_hint_y=None, height=dp(56),
-                                      background_color=(0.55, 0.55, 0.55, 1))
+                                      background_color=(1.6, 1.6, 1.6, 1))
 
         def _tr_toggle(btn, *_):
             on = btn.state == 'down'
             btn.text = ('Перевод: ВКЛЮЧЁН — книга будет переведена'
                         if on else 'Перевод: выключен')
             btn.background_color = ((0.2, 0.7, 0.2, 1) if on
-                                    else (0.55, 0.55, 0.55, 1))
+                                    else (1.6, 1.6, 1.6, 1))
 
         self.translate.bind(state=_tr_toggle)
         form.add_widget(self.translate)
