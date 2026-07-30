@@ -99,6 +99,29 @@ TTS_ENGINES = {
 OUTPUT_FORMATS = ['m4b', 'mp3', 'wav', 'flac']
 TRANSLATION_METHODS = ['google', 'deepl', 'deepl_parser', 'argos']
 
+# Universal voices: XTTS clones the timbre for ANY language, so these
+# curated voices from voices/eng/ work for every book language. Display
+# label -> file name (resolved by the notebook via glob in voices/**).
+VOICE_DEFAULT = 'По умолчанию (движок сам выберет)'
+VOICES = {
+    VOICE_DEFAULT: None,
+    'Женский · Alexandra Hisakawa': 'AlexandraHisakawa',
+    'Женский · Ana Florence': 'AnaFlorence',
+    'Женский · Claribel Dervla': 'ClaribelDervla',
+    'Женский · Daenerys Targaryen': 'DaenerysTargaryen',
+    'Женский · Rosamund Pike': 'RosamundPike',
+    'Женский · Sofia Hellen': 'SofiaHellen',
+    'Женский · Tanja Adelina': 'TanjaAdelina',
+    'Мужской · Aaron Dreschner': 'AaronDreschner',
+    'Мужской · Baldur Sanjin': 'BaldurSanjin',
+    'Мужской · Kumar Dahl': 'KumarDahl',
+    'Мужской · Ludvig Milivoj': 'LudvigMilivoj',
+    'Мужской · Morgan Freeman': 'MorganFreeman',
+    'Мужской · Ray Porter': 'RayPorter',
+    'Мужской · Viktor Eka': 'ViktorEka',
+    'Мужской (пожилой) · David Attenborough': 'DavidAttenborough',
+}
+
 
 def open_url(url):
     """Open a URL in the phone browser (Android intent, desktop fallback)."""
@@ -198,10 +221,16 @@ class Ebook2AudiobookClient(App):
                                   size_hint_y=None, height=dp(44))
         form.add_widget(self.out_format)
 
-        label('Голос (имя из voices/, пусто = по умолчанию):')
-        self.voice = TextInput(size_hint_y=None, height=dp(44),
-                               multiline=False, hint_text='например KumarDahl')
+        label('Голос (универсальный, подходит любому языку):')
+        self.voice = Spinner(text=VOICE_DEFAULT, values=list(VOICES),
+                             size_hint_y=None, height=dp(44))
         form.add_widget(self.voice)
+
+        label('Или своё имя голоса из voices/ (перекрывает выбор выше):')
+        self.voice_custom = TextInput(size_hint_y=None, height=dp(44),
+                                      multiline=False,
+                                      hint_text='например KumarDahl')
+        form.add_widget(self.voice_custom)
 
         label('Скорость (0.5–2.0):')
         self.speed = TextInput(text='1.0', size_hint_y=None, height=dp(44),
@@ -255,7 +284,8 @@ class Ebook2AudiobookClient(App):
             'language': self.language.selected_code,
             'tts_engine': TTS_ENGINES.get(self.engine.text, self.engine.text),
             'output_format': self.out_format.text,
-            'voice': self.voice.text.strip() or None,
+            'voice': (self.voice_custom.text.strip()
+                      or VOICES.get(self.voice.text)),
         }
         try:
             cfg['speed'] = float(self.speed.text)
