@@ -1,4 +1,6 @@
 import os
+import sys
+import types
 import numpy as np
 import librosa
 import torchaudio
@@ -13,6 +15,20 @@ if not hasattr(torchaudio, 'get_audio_backend'):
     torchaudio.get_audio_backend = lambda *args, **kwargs: 'soundfile'
 if not hasattr(torchaudio, 'list_audio_backends'):
     torchaudio.list_audio_backends = lambda *args, **kwargs: ['soundfile']
+
+# pyannote also does `from torchaudio.backend.common import AudioMetaData`;
+# new torchaudio dropped the whole torchaudio.backend module (the class now
+# lives at torchaudio.AudioMetaData), so register a stub module for it.
+try:
+    import torchaudio.backend.common  # noqa: F401
+except ImportError:
+    _common = types.ModuleType('torchaudio.backend.common')
+    _common.AudioMetaData = getattr(torchaudio, 'AudioMetaData', object)
+    _backend = types.ModuleType('torchaudio.backend')
+    _backend.common = _common
+    torchaudio.backend = _backend
+    sys.modules['torchaudio.backend'] = _backend
+    sys.modules['torchaudio.backend.common'] = _common
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
