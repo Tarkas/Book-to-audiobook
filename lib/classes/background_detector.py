@@ -3,11 +3,13 @@ import numpy as np
 import librosa
 import torchaudio
 
-# pyannote.audio 3.1.1 calls torchaudio.set_audio_backend at import time, but
-# torchaudio >= 2.2 (e.g. the Colab preinstalled build) removed it. Restore it
-# as a no-op (it was deprecated to a no-op before removal anyway).
+# pyannote.audio 3.1.1 calls torchaudio.set_audio_backend/get_audio_backend at
+# import time, but torchaudio >= 2.2 (e.g. the Colab preinstalled build) removed
+# them. Restore both as no-ops ('soundfile' is what pyannote expects to see).
 if not hasattr(torchaudio, 'set_audio_backend'):
     torchaudio.set_audio_backend = lambda *args, **kwargs: None
+if not hasattr(torchaudio, 'get_audio_backend'):
+    torchaudio.get_audio_backend = lambda *args, **kwargs: 'soundfile'
 
 from pyannote.audio import Model
 from pyannote.audio.pipelines import VoiceActivityDetection
