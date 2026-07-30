@@ -815,8 +815,19 @@ def translate_ebook_file(ebook_path, source_lang, target_lang, method='google', 
     # Preflight: probe every compatible method (and flag the selected one) so the log
     # tells us exactly which methods work and why the others don't, before we translate
     # the whole file and risk silently falling back to the original text.
+    # If the selected method is broken (e.g. 'deepl' without the package/API key on
+    # Colab) but another method works, switch to it instead of voicing the original.
     try:
-        diagnose_translation_methods(source_lang, target_lang, selected_method=method)
+        results = diagnose_translation_methods(source_lang, target_lang, selected_method=method)
+        ok, _ = results.get(method, (False, ''))
+        if not ok:
+            for alt in ('google', 'deepl_parser', 'argos'):
+                if alt != method and results.get(alt, (False, ''))[0]:
+                    logging.warning(
+                        f"Automatically falling back from broken translation method "
+                        f"'{method}' to working method '{alt}'.")
+                    method = alt
+                    break
     except Exception as e:
         logging.warning(f"Translation preflight check could not run: {e}")
 
