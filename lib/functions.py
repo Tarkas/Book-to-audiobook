@@ -417,6 +417,14 @@ def convert2epub(id):
             file_input = os.path.join(session['process_dir'], f'{filename_no_ext}.md')
             with open(file_input, "w", encoding="utf-8") as html_file:
                 html_file.write(markdown_text)
+        elif file_ext in ('.md', '.txt'):
+            # Markdown/plain text carries no embedded metadata: without an explicit
+            # title calibre names the generated EPUB 'index', which then becomes the
+            # audiobook file name. Derive the title from the file name instead
+            # (dropping the translated_ prefix added by the cloud translation step).
+            stem = os.path.splitext(os.path.basename(file_input))[0]
+            stem = re.sub(r'^translated_', '', stem)
+            title = stem.replace('_', ' ').strip() or False
         msg = f"Running command: {util_app} {file_input} {session['epub_path']}"
         print(msg)
         cmd = [
