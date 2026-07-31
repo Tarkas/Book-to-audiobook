@@ -468,7 +468,7 @@ def _try_fallback_methods(text, source_lang, target_lang, original_error, parent
     
     # If all fallbacks fail, return original text with error message
     logging.error(f"All fallback translation methods failed. Original SSL error: {original_error}")
-    return f"[Translation failed - using original text] {text}"
+    return text
 
 def _handle_translation_failure(text, source_lang, target_lang, error_msg, method, parent_window=None):
     """
@@ -524,10 +524,10 @@ def _handle_translation_failure(text, source_lang, target_lang, error_msg, metho
                 "All translation methods failed. Using original text.",
                 parent=parent_window
             )
-            return f"[Translation failed - using original text] {text}"
+            return text
             
         elif dialog_result is False:  # User chose to skip this text
-            return f"[Translation failed - using original text] {text}"
+            return text
             
         else:  # User cancelled the entire process
             raise TranslationFailedError(
@@ -538,7 +538,7 @@ def _handle_translation_failure(text, source_lang, target_lang, error_msg, metho
             )
     else:
         # Not in GUI context, just log and return error message
-        return f"[Translation failed - using original text] {text}"
+        return text
 
 def _detect_repetitive_content(content, threshold=20):
     """
@@ -612,7 +612,11 @@ def translate_ebook_content(content, source_lang, target_lang, method='google', 
     if len(content) <= max_chunk_size:
         try:
             result = translate_text(content, source_lang, target_lang, method, parent_window)
-            
+            # Translators may return None for junk input (OCR artifacts, dot
+            # leaders, page numbers) - keep the original text in that case.
+            if not result:
+                logging.warning("Translator returned no result; keeping original text")
+                result = content
             # Check for repetitive content with a higher threshold to reduce false positives
             # Use a higher threshold (20) for normal content checking
             is_repetitive, repeated_content, count = _detect_repetitive_content(result, threshold=20)
@@ -635,7 +639,9 @@ def translate_ebook_content(content, source_lang, target_lang, method='google', 
             raise
         except Exception as e:
             logging.warning(f"Translation failed: {e}")
-            error_result = f"[Translation failed - using original text] {content}"
+            # Keep the raw original text: any marker prepended here would be
+            # read aloud in the audiobook.
+            error_result = content
             if translation_manager and chapter_index is not None:
                 translation_manager.save_translated_chapter(chapter_index, content, error_result)
             return error_result
@@ -646,7 +652,9 @@ def translate_ebook_content(content, source_lang, target_lang, method='google', 
             if paragraph.strip():
                 try:
                     translated = translate_text(paragraph, source_lang, target_lang, method, parent_window)
-                    
+                    if not translated:
+                        logging.warning("Translator returned no result for a paragraph; keeping original text")
+                        translated = paragraph
                     # Check for repetitive content with a higher threshold to reduce false positives
                     # Use a higher threshold (20) for normal content checking
                     is_repetitive, repeated_content, count = _detect_repetitive_content(translated, threshold=20)
@@ -667,7 +675,7 @@ def translate_ebook_content(content, source_lang, target_lang, method='google', 
                     raise
                 except Exception as e:
                     logging.warning(f"Translation failed for paragraph: {e}")
-                    translated_paragraphs.append(f"[Translation failed - using original text] {paragraph}")
+                    translated_paragraphs.append(paragraph)
             else:
                 translated_paragraphs.append(paragraph)
         result = '\n\n'.join(translated_paragraphs)
@@ -1091,7 +1099,7 @@ def _translate_text_file(ebook_path, source_lang, target_lang, method, output_pa
             raise
         except Exception as e:
             logging.error(f"Translation failed: {e}")
-            translated_content = f"[Translation failed - using original text]\n\n{content}"
+            translated_content = content
 
     if not output_path:
         filename = os.path.splitext(os.path.basename(ebook_path))[0]
@@ -1127,7 +1135,7 @@ def _translate_pdf_file(ebook_path, source_lang, target_lang, method, output_pat
         raise
     except Exception as e:
         logging.error(f"PDF translation failed: {e}")
-        translated_content = f"[Translation failed - using original text]\n\n{markdown_text}"
+        translated_content = markdown_text
 
     if not output_path:
         filename = os.path.splitext(os.path.basename(ebook_path))[0]

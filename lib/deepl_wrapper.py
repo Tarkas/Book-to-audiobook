@@ -170,8 +170,9 @@ def _fallback_translation(text, source_lang, target_lang):
     except Exception as e:
         logging.warning(f"Google Translate fallback failed: {e}")
     
-    # If all else fails, return the original text with a warning
-    return f"[Translation failed - using original text] {text}"
+    # If all else fails, return the original text (a marker prepended here
+    # would be read aloud in the audiobook)
+    return text
 
 def _simulate_deepl_translation(text, source_lang, target_lang):
     """
