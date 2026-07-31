@@ -23,12 +23,14 @@ android.ndk = 25b
 orientation = portrait
 fullscreen = 0
 
-# Android 10/11 target per project requirements
+# Target Android 11, but stay installable down to Android 8.0 (API 26):
+# the user's second phone runs Android 8.
 android.api = 30
-android.minapi = 29
-android.ndk_api = 29
-# arm64 covers all Android 10/11 phones; single arch = faster, simpler build
-android.archs = arm64-v8a
+android.minapi = 26
+android.ndk_api = 21
+# Fat APK: arm64 for modern phones + 32-bit armeabi-v7a for older ones.
+# Builds roughly twice as long, but installs almost everywhere.
+android.archs = arm64-v8a, armeabi-v7a
 android.permissions = INTERNET
 
 # Accept SDK licenses automatically inside CI/Colab
