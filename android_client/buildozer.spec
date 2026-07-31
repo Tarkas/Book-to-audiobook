@@ -23,10 +23,11 @@ android.ndk = 25b
 orientation = portrait
 fullscreen = 0
 
-# Target Android 11, but stay installable down to Android 8.0 (API 26):
-# the user's second phone runs Android 8.
+# Target Android 11, installable down to Android 5.0 (API 21). minapi MUST
+# equal ndk_api: p4a refuses to package when they differ
+# ("--minsdk argument does not match the api that is compiled against").
 android.api = 30
-android.minapi = 26
+android.minapi = 21
 android.ndk_api = 21
 # Fat APK: arm64 for modern phones + 32-bit armeabi-v7a for older ones.
 # Builds roughly twice as long, but installs almost everywhere.
