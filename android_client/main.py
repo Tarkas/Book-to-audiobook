@@ -221,7 +221,7 @@ class Ebook2AudiobookClient(App):
                                   size_hint_y=None, height=dp(44))
         form.add_widget(self.out_format)
 
-        label('Голос (универсальный, подходит любому языку):')
+        label('Выбор вокала:')
         self.voice = Spinner(text=VOICE_DEFAULT, values=list(VOICES),
                              size_hint_y=None, height=dp(44))
         form.add_widget(self.voice)
