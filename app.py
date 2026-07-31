@@ -325,18 +325,26 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
                     if src_lang and tgt_lang and src_lang != tgt_lang:
                         try:
                             from lib.improved_translator import translate_ebook_file
-                            tmp_dir = tempfile.mkdtemp()
+                            # Deterministic location (instead of mkdtemp) so a resumed
+                            # run reuses the finished translation and its cache instead
+                            # of translating the whole book again.
+                            tmp_dir = os.path.join(os.path.abspath('tmp'), 'translation')
+                            os.makedirs(tmp_dir, exist_ok=True)
                             base = os.path.basename(args['ebook'])
                             stem, ext = os.path.splitext(base)
                             out_name = f'translated_{stem}.md' if ext.lower() == '.pdf' else f'translated_{base}'
                             out_path = os.path.join(tmp_dir, out_name)
-                            print(f"Translating ebook {src_lang} -> {tgt_lang} using {args['translation_method']}...")
-                            translated = translate_ebook_file(args['ebook'], src_lang, tgt_lang, args['translation_method'], out_path, tmp_dir, None)
-                            if translated and os.path.exists(translated):
-                                args['ebook'] = os.path.abspath(translated)
-                                print(f"Translation complete: {args['ebook']}")
+                            if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
+                                args['ebook'] = os.path.abspath(out_path)
+                                print(f"Reusing existing translation: {args['ebook']}")
                             else:
-                                print('Translation produced no file; converting the original ebook.')
+                                print(f"Translating ebook {src_lang} -> {tgt_lang} using {args['translation_method']}...")
+                                translated = translate_ebook_file(args['ebook'], src_lang, tgt_lang, args['translation_method'], out_path, tmp_dir, None)
+                                if translated and os.path.exists(translated):
+                                    args['ebook'] = os.path.abspath(translated)
+                                    print(f"Translation complete: {args['ebook']}")
+                                else:
+                                    print('Translation produced no file; converting the original ebook.')
                         except Exception as translate_error:
                             print(f'Translation failed ({translate_error}); converting the original ebook.')
                     else:
