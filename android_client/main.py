@@ -90,11 +90,14 @@ LANG_SEARCH = {
     for code, names in LANGS
 }
 
-# Same engines as lib/models.py TTS_ENGINES
+# Same engines as lib/models.py TTS_ENGINES.
+# COSYVOICE and MOSSTTSNANO are intentionally omitted: they need the ./CosyVoice
+# and ./MOSS-TTS-Nano repos (gitignored, not cloned by the Colab notebook), so
+# they would fail on a phone/Colab without extra manual setup. The engines below
+# are all pip-installable from requirements.txt (coqui-tts + kokoro).
 TTS_ENGINES = {
     'XTTSv2': 'xtts', 'BARK': 'bark', 'VITS': 'vits', 'FAIRSEQ': 'fairseq',
-    'TACOTRON2': 'tacotron', 'YOURTTS': 'yourtts', 'COSYVOICE': 'cosyvoice',
-    'KOKORO': 'kokoro', 'MOSSTTSNANO': 'mosstts_nano',
+    'TACOTRON2': 'tacotron', 'YOURTTS': 'yourtts', 'KOKORO': 'kokoro',
 }
 OUTPUT_FORMATS = ['m4b', 'mp3', 'wav', 'flac']
 TRANSLATION_METHODS = ['google', 'deepl', 'deepl_parser', 'argos']
@@ -160,8 +163,15 @@ class LanguagePicker(BoxLayout):
                                  size_hint_y=None, height=dp(44),
                                  multiline=False)
         content.add_widget(filter_input)
-        scroll = ScrollView()
-        listbox = GridLayout(cols=1, size_hint_y=None, spacing=dp(2))
+        # ScrollView inside a Popup needs an explicit vertical scroll and a
+        # visible bar, otherwise on Android the list can be pushed up and the
+        # top items become unreachable. scroll_y is pinned to 1 (top) so the
+        # first languages are always visible right away.
+        scroll = ScrollView(do_scroll_x=False, do_scroll_y=True,
+                            bar_width=dp(8), scroll_type=['content', 'bars'],
+                            scroll_y=1)
+        listbox = GridLayout(cols=1, size_hint_y=None, spacing=dp(2),
+                             padding=[dp(6), dp(6), dp(6), dp(6)])
         listbox.bind(minimum_height=listbox.setter('height'))
         scroll.add_widget(listbox)
         content.add_widget(scroll)
@@ -174,7 +184,9 @@ class LanguagePicker(BoxLayout):
             for display, code in LANG_DISPLAY.items():
                 if needle and needle not in LANG_SEARCH[display]:
                     continue
-                btn = Button(text=display, size_hint_y=None, height=dp(44))
+                btn = Button(text=display, size_hint_y=None, height=dp(44),
+                             halign='left', valign='middle', shorten=True)
+                btn.bind(size=lambda b, s: setattr(b, 'text_size', s))
 
                 def pick(_btn, d=display, c=code):
                     self.selected_code = c
@@ -183,11 +195,18 @@ class LanguagePicker(BoxLayout):
 
                 btn.bind(on_release=pick)
                 listbox.add_widget(btn)
+            # Keep the list at the top after every filter change so the first
+            # items are always reachable instead of being scrolled off-screen.
+            scroll.scroll_y = 1
 
         filter_input.bind(text=rebuild)
         rebuild()
         popup.open()
-        filter_input.focus = True
+        # Delay focus so the soft keyboard does not immediately push the popup
+        # up before the user has a chance to see the top of the list.
+        from kivy.clock import Clock
+        Clock.schedule_once(lambda *_: setattr(filter_input, 'focus', True),
+                            0.2)
 
 
 class Ebook2AudiobookClient(App):

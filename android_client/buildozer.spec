@@ -9,7 +9,8 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 icon.filename = %(source.dir)s/icon.png
 presplash.filename = %(source.dir)s/icon.png
-version = 1.0
+version = 1.1.0
+version.code = 2
 
 requirements = python3,kivy==2.3.0,pyjnius
 
@@ -33,6 +34,18 @@ android.ndk_api = 21
 # Builds roughly twice as long, but installs almost everywhere.
 android.archs = arm64-v8a, armeabi-v7a
 android.permissions = INTERNET
+
+# --- Permanent signing key -----------------------------------------------
+# The APK must be signed with a FIXED keystore so that a new build can be
+# installed as an UPDATE over the previous one (Android refuses an in-place
+# install when the signature differs). Every Colab build uses this same
+# committed keystore; the debug keystore (~/.android/debug.keystore) is
+# regenerated per machine/runtime and would force users to uninstall/reinstall.
+android.sign_key = ebook2audiobook
+android.keystore = %(source.dir)s/ebook2audiobook-release.keystore
+android.storepass = ebook2audiobook
+android.keyalias = ebook2audiobook
+android.keypass = ebook2audiobook
 
 # Accept SDK licenses automatically inside CI/Colab
 android.accept_sdk_license = True
