@@ -66,8 +66,11 @@ voices/**/*_temp.wav
 /Data_Driven_Healthcare_Revolutionizing_Patient_Care_with_Data_Science.epub
 /2025-11-08 18 09 48.png
 
-# --- Android build artifacts and secrets ---
-/android_client/*.keystore
+# --- Android build artifacts ---
+# NOTE: the APK signing keystore (android_client/ebook2audiobook-release.keystore)
+# is intentionally committed so every Colab build shares ONE signature and new
+# APKs install as in-place updates (see android_client/README.md). Do not
+# re-add *.keystore here or the Colab build will fail with "key is missing".
 /build_log.zip
 /build_report.txt
 /Colab_logs.txt
