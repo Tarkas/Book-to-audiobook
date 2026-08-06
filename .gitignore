@@ -65,3 +65,9 @@ voices/**/*_temp.wav
 /__ubunturef.epub
 /Data_Driven_Healthcare_Revolutionizing_Patient_Care_with_Data_Science.epub
 /2025-11-08 18 09 48.png
+
+# --- Android build artifacts and secrets ---
+/android_client/*.keystore
+/build_log.zip
+/build_report.txt
+/Colab_logs.txt

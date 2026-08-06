@@ -1081,9 +1081,81 @@ def _read_text_file_any_encoding(path):
     logging.warning(f"Could not determine encoding of '{os.path.basename(path)}'; decoding as UTF-8 with replacement")
     return raw.decode('utf-8', errors='replace')
 
+def _strip_gutenberg_blocks(text):
+    """Remove Project Gutenberg boilerplate from a plain-text ebook.
+
+    Free ebooks downloaded from Project Gutenberg (and mirrors) wrap the real
+    book between two marker lines and surround it with a long license header
+    and footer. Once translated, all of that boilerplate would be voiced by the
+    TTS engine at the very start and very end of the audiobook. This helper
+    drops:
+
+      * everything before the 'START OF THE PROJECT GUTENBERG EBOOK' marker,
+      * everything after the 'END OF THE PROJECT GUTENBERG EBOOK' marker,
+      * recognizable Gutenberg license paragraphs that may remain when the
+        markers are missing or renamed (translated/repackaged files).
+
+    It is applied to the source text *before* translation so neither the
+    English nor the translated boilerplate ever reaches the audiobook.
+    """
+    if not text:
+        return text
+
+    marker_re = re.compile(
+        r'^\s*\*{0,3}\s*(START|END)\s+OF\s+(?:THE\s+)?PROJECT\s+GUTENBERG\s+EBOOK\b.*?\*{0,3}\s*$',
+        re.IGNORECASE | re.MULTILINE
+    )
+    lines = text.splitlines()
+    start_idx = None
+    end_idx = None
+    for i, line in enumerate(lines):
+        m = marker_re.match(line)
+        if not m:
+            continue
+        if m.group(1).upper() == 'START':
+            if start_idx is None:
+                start_idx = i
+        else:
+            if end_idx is None:
+                end_idx = i
+
+    keep_from = start_idx + 1 if start_idx is not None else 0
+    keep_to = end_idx if end_idx is not None else len(lines)
+    lines = lines[keep_from:keep_to]
+
+    # Drop leftover license paragraphs (markers missing/renamed). These lines
+    # are safe to remove anywhere: they only occur in the PG boilerplate.
+    license_re = re.compile(
+        r'^\s*(?:'
+        r'This eBook is for the use of anyone anywhere(?: at no cost and with almost no restrictions whatsoever)?\.?.*'
+        r'|The Project Gutenberg EBook of .*'
+        r'|The Project Gutenberg eBook(?: of)? .*'
+        r'|The Project Gutenberg Literary Archive Foundation.*'
+        r'|Most people start at our website which has the main PG search facility: www\.gutenberg\.org.*'
+        r'|Copyright \(C\) \d{4}.*'
+        r'|This eBook is for the use of anyone anywhere in the United States.*'
+        r'|END OF THE PROJECT GUTENBERG EBOOK.*'
+        r'|Проект «Гутенберг».*'
+        r'|Электронная книга проекта «Гутенберг».*'
+        r')\s*$',
+        re.IGNORECASE
+    )
+    lines = [line for line in lines if not license_re.match(line)]
+
+    # Collapse the leading blank lines left by the removed header.
+    while lines and not lines[0].strip():
+        lines.pop(0)
+
+    return '\n'.join(lines).strip()
+
+
+
 def _translate_text_file(ebook_path, source_lang, target_lang, method, output_path, translation_manager=None, parent_window=None):
     """Translate a text file with user feedback."""
     content = _read_text_file_any_encoding(ebook_path)
+    # Strip Project Gutenberg licensing boilerplate so it is not read aloud
+    # at the start and end of the translated audiobook.
+    content = _strip_gutenberg_blocks(content)
 
     cached_translation = None
     if translation_manager:

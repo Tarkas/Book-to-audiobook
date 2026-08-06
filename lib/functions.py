@@ -410,6 +410,14 @@ def convert2epub(id):
             title = pdf_metadata.get('title') or filename_no_ext
             author = pdf_metadata.get('author') or False
             markdown_text = pymupdf4llm.to_markdown(session['ebook'])
+            # Remove pymupdf4llm picture-text wrapper markers (keep the text inside).
+            # Layout converter emits HTML-comment markers ("<!-- Start of picture text -->"),
+            # while the plain-text converter emits "-- Start/End of picture text --" lines.
+            # Strip both so the wrapper text is only read aloud once, without the markers.
+            markdown_text = re.sub(r'<!--\s*Start of picture text\s*-->\s*', '', markdown_text)
+            markdown_text = re.sub(r'<!--\s*End of picture text\s*-->\s*', '', markdown_text)
+            markdown_text = re.sub(r'^\s*--+\s*Start of picture text\s*--*\s*$', '', markdown_text, flags=re.MULTILINE)
+            markdown_text = re.sub(r'^\s*--+\s*End of picture text\s*--*\s*$', '', markdown_text, flags=re.MULTILINE)
             # Remove single asterisks for italics (but not bold **)
             markdown_text = re.sub(r'(?<!\*)\*(?!\*)(.*?)\*(?!\*)', r'\1', markdown_text)
             # Remove single underscores for italics (but not bold __)
