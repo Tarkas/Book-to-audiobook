@@ -9,8 +9,16 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 icon.filename = %(source.dir)s/icon.png
 presplash.filename = %(source.dir)s/icon.png
-version = 1.1.0
-version.code = 2
+version = 1.1.1
+version.code = 3
+
+# MUST be "apk", not "aab". With buildozer 1.5.0 / p4a release-2024.01.21 the
+# default is "aab": p4a then runs `gradlew bundleRelease`, produces an Android
+# App Bundle (.aab) that phones CANNOT install directly, and - worse - it does
+# NOT pass the signing key env vars (P4A_RELEASE_KEYSTORE etc.), so the package
+# ends up UNSIGNED. Forcing "apk" makes p4a run `assembleRelease` -> an
+# installable, properly signed .apk.
+android.release_artifact = apk
 
 requirements = python3,kivy==2.3.0,pyjnius
 
