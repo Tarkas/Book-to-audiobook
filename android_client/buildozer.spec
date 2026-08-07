@@ -9,8 +9,8 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 icon.filename = %(source.dir)s/icon.png
 presplash.filename = %(source.dir)s/icon.png
-version = 1.1.1
-version.code = 3
+version = 1.2.0
+version.code = 4
 
 # MUST be "apk", not "aab". With buildozer 1.5.0 / p4a release-2024.01.21 the
 # default is "aab": p4a then runs `gradlew bundleRelease`, produces an Android
@@ -32,10 +32,13 @@ android.ndk = 25b
 orientation = portrait
 fullscreen = 0
 
-# Target Android 11, installable down to Android 5.0 (API 21). minapi MUST
-# equal ndk_api: p4a refuses to package when they differ
-# ("--minsdk argument does not match the api that is compiled against").
-android.api = 30
+# Target Android 13 (API 33). Google Play requires new/updated apps to target
+# API 31 or higher; a release build fails the fatal lintVitalRelease check
+# (ExpiredTargetSdkVersion) when android.api < 31. Still installable down to
+# Android 5.0 (API 21). minapi MUST equal ndk_api: p4a refuses to package when
+# they differ ("--minsdk argument does not match the api that is compiled
+# against").
+android.api = 33
 android.minapi = 21
 android.ndk_api = 21
 # Fat APK: arm64 for modern phones + 32-bit armeabi-v7a for older ones.

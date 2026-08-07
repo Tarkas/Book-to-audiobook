@@ -32,7 +32,7 @@ from kivy.uix.togglebutton import ToggleButton
 
 # Must match CLOUD_REPO / CLOUD_BRANCH in tkinter_ui.py
 CLOUD_REPO = 'Tarkas/Book-to-audiobook'
-CLOUD_BRANCH = 'main'
+CLOUD_BRANCH = 'master'
 COLAB_NOTEBOOK_URL = (
     f'https://colab.research.google.com/github/{CLOUD_REPO}'
     f'/blob/{CLOUD_BRANCH}/Notebooks/colab_ebook2audiobook.ipynb'

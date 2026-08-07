@@ -67,10 +67,13 @@ voices/**/*_temp.wav
 /2025-11-08 18 09 48.png
 
 # --- Android build artifacts ---
-# NOTE: the APK signing keystore (android_client/ebook2audiobook-release.keystore)
-# is intentionally committed so every Colab build shares ONE signature and new
-# APKs install as in-place updates (see android_client/README.md). Do not
-# re-add *.keystore here or the Colab build will fail with "key is missing".
+# The APK signing keystore (android_client/ebook2audiobook-release.keystore)
+# is NOT committed for security. It lives only on Google Drive
+# (Ebook2Audio/ApkSigning/ebook2audiobook-release.keystore) and is pulled down
+# by Notebooks/build_android_apk.ipynb before the build. Keep any local copies
+# out of git.
+android_client/ebook2audiobook-release.keystore
+*.keystore
 /build_log.zip
 /build_report.txt
 /Colab_logs.txt

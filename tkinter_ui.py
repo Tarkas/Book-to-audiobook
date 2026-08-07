@@ -27,7 +27,7 @@ from lib.improved_translator import translate_ebook_file, get_compatible_transla
 # from GitHub too, so these must point to the fork where you pushed these changes
 # (app.py translation flags + the settings-aware notebook). Change them to your fork.
 CLOUD_REPO = 'Tarkas/Book-to-audiobook'
-CLOUD_BRANCH = 'main'
+CLOUD_BRANCH = 'master'
 COLAB_NOTEBOOK_URL = f'https://colab.research.google.com/github/{CLOUD_REPO}/blob/{CLOUD_BRANCH}/Notebooks/colab_ebook2audiobook.ipynb'
 
 # Import our new language codes mapping

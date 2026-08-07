@@ -26,12 +26,18 @@ using [`Notebooks/build_android_apk.ipynb`](../Notebooks/build_android_apk.ipynb
 
 ## Permanent signing key (in-place updates)
 
-The APK is signed with the **permanent keystore** committed in this folder:
+The APK is signed with the **permanent keystore** that lives on your Google
+Drive (not in git, for security). The keystore is shared as a link and the
+build notebook (`Notebooks/build_android_apk.ipynb`) downloads it via `gdown`
+into `android_client/` automatically before `buildozer` runs.
 
-- `ebook2audiobook-release.keystore` (PKCS12)
+To configure the keystore link, edit cell (2) of the notebook and set
+`KEY_FILE_ID` to the id from your Google Drive share link (the part after
+`/file/d/` or `?id=`). The file must be shared as **"Anyone with the link"**.
+
+Keystore details:
 - store/key alias: `ebook2audiobook`
 - store/key password: `ebook2audiobook`
-
 Because the same keystore is used for **every** build, all APKs share the same
 signature. Android therefore treats a newer APK installed over an older one as an
 **update** — users do **not** have to uninstall and reinstall the client.
@@ -47,9 +53,9 @@ forcing users to uninstall/reinstall.
 ### Rules to keep updates working
 
 1. **Never lose or replace this keystore.** If it is regenerated, existing
-   installs can no longer be updated in place.
+   installs can no longer be updated in place. Back it up on Google Drive.
 2. **Keep it secret.** Anyone with this keystore + password can release an APK
-   that overwrites your app.
+   that overwrites your app. Never commit it to git (it is gitignored).
 3. **Bump the version for each release** in `buildozer.spec`:
    - `version` (human readable, e.g. `1.2.0`)
    - `version.code` (monotonic integer Android compares, e.g. `3`)
