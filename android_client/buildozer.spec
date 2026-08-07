@@ -50,13 +50,18 @@ android.permissions = INTERNET
 # The APK must be signed with a FIXED keystore so that a new build can be
 # installed as an UPDATE over the previous one (Android refuses an in-place
 # install when the signature differs). Every Colab build uses this same
-# committed keystore; the debug keystore (~/.android/debug.keystore) is
-# regenerated per machine/runtime and would force users to uninstall/reinstall.
+# keystore (fetched from Google Drive); the debug keystore
+# (~/.android/debug.keystore) is regenerated per machine/runtime and would
+# force users to uninstall/reinstall.
+#
+# 2026-08: keystore REGENERATED (the old key was exposed in git history).
+# NEW password below. The new keystore must be re-uploaded to Google Drive
+# (see the notebook's KEY_FILE_ID) so Colab downloads the NEW key.
 android.sign_key = ebook2audiobook
 android.keystore = %(source.dir)s/ebook2audiobook-release.keystore
-android.storepass = ebook2audiobook
+android.storepass = ebook2audiobook2026
 android.keyalias = ebook2audiobook
-android.keypass = ebook2audiobook
+android.keypass = ebook2audiobook2026
 
 # Accept SDK licenses automatically inside CI/Colab
 android.accept_sdk_license = True

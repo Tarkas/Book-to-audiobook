@@ -37,7 +37,7 @@ To configure the keystore link, edit cell (2) of the notebook and set
 
 Keystore details:
 - store/key alias: `ebook2audiobook`
-- store/key password: `ebook2audiobook`
+- store/key password: `ebook2audiobook2026` (regenerated 2026-08)
 Because the same keystore is used for **every** build, all APKs share the same
 signature. Android therefore treats a newer APK installed over an older one as an
 **update** — users do **not** have to uninstall and reinstall the client.
@@ -66,6 +66,6 @@ forcing users to uninstall/reinstall.
 ```ini
 android.sign_key = ebook2audiobook
 android.keystore = %(source.dir)s/ebook2audiobook-release.keystore
-android.storepass = ebook2audiobook
+android.storepass = ebook2audiobook2026
 android.keyalias = ebook2audiobook
-android.keypass = ebook2audiobook
+android.keypass = ebook2audiobook2026

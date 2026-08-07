@@ -22,6 +22,16 @@
 - [x] `android_client/ebook2audiobook-release.keystore` удалён из git (`git rm --cached`);
       локальная копия сохранена + бэкап у пользователя (`C:\Users\Devuser\ebook2audiobook-release.keystore.backup`)
 
+## Перегенерация keystore (2026-08) — старый ключ был в git history
+
+- [x] Сгенерирован НОВЫЙ keystore (`keytool -genkeypair`, RSA 2048, 10000 дней)
+      на месте `android_client/ebook2audiobook-release.keystore`
+- [x] Новый пароль: `ebook2audiobook2026` — проверен через `keytool -list` (RC=0)
+- [x] `android_client/buildozer.spec`: `android.storepass` / `android.keypass`
+      обновлены на `ebook2audiobook2026`
+- [x] `Notebooks/build_android_apk.ipynb` (ячейка 2): добавлена заметка о
+      перегенерации и необходимости загрузить НОВЫЙ keystore на Drive
+
 ## Осталось (за пользователем)
 
 - [ ] Закоммитить изменения + push в GitHub (включая удаление keystore из индекса)
