@@ -54,6 +54,13 @@ android.permissions = INTERNET
 # (~/.android/debug.keystore) is regenerated per machine/runtime and would
 # force users to uninstall/reinstall.
 #
+# NOTE: buildozer does NOT forward these android.* signing keys to
+# python-for-android, so `buildozer android release` alone produces an
+# UNSIGNED apk. The build notebook (cell 2) therefore signs the finished APK
+# AFTER the build with `apksigner` (Android build-tools) using this keystore.
+# These settings are kept here for reference / for environments where p4a
+# does pick them up.
+#
 # 2026-08: keystore REGENERATED (the old key was exposed in git history).
 # NEW password below. The new keystore must be re-uploaded to Google Drive
 # (see the notebook's KEY_FILE_ID) so Colab downloads the NEW key.

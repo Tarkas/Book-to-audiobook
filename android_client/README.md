@@ -31,6 +31,18 @@ Drive (not in git, for security). The keystore is shared as a link and the
 build notebook (`Notebooks/build_android_apk.ipynb`) downloads it via `gdown`
 into `android_client/` automatically before `buildozer` runs.
 
+> **Signing detail (important).** `buildozer` does **not** forward the
+> `android.sign_key` / `android.keystore` / password keys from
+> `buildozer.spec` to python-for-android, so `buildozer android release` alone
+> produces an **UNSIGNED** APK that no phone will install. Setting the
+> `P4A_RELEASE_*` environment variables is unreliable (it silently produced an
+> `unsigned` APK in practice). The build notebook (cell 2) therefore signs the
+> finished APK **after** the build with `apksigner` from the Android
+> build-tools (already downloaded by buildozer), using the permanent keystore.
+> This is deterministic. The downloaded file is `...-signed.apk` (no
+> `unsigned`); if the filename still contains `unsigned`, signing failed.
+
+
 To configure the keystore link, edit cell (2) of the notebook and set
 `KEY_FILE_ID` to the id from your Google Drive share link (the part after
 `/file/d/` or `?id=`). The file must be shared as **"Anyone with the link"**.
