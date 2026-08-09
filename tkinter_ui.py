@@ -1079,24 +1079,29 @@ class Ebook2AudiobookGUI:
                     # Log the normalized language codes for debugging
                     self.root.after(0, self.update_status, f"Normalized language codes: {source_lang} -> {target_lang}")
                     
-                    # Check if source and target languages are the same
+# Check if source and target languages are the same
                     if source_lang == target_lang:
                         self.root.after(0, self.update_status, "WARNING: Source and target languages are the same - translation will be skipped")
                     else:
                         # Only proceed with translation if languages are different
-                        # Create a temporary directory for the translated ebook
-                        temp_dir = tempfile.mkdtemp()
+                        # Save the translated ebook into the output directory so it is
+                        # kept alongside the finished audiobook (not in a temp dir that
+                        # gets deleted at the end of the conversion).
+                        out_dir_path = args['audiobooks_dir']
+                        os.makedirs(out_dir_path, exist_ok=True)
+                        temp_dir = None  # translation no longer lives in a temp dir
                         original_filename = os.path.basename(original_ebook_path)
                         original_ext = os.path.splitext(original_filename)[1].lower()
                         
-                        # For PDF files, the translation function returns a markdown file by default
-                        # For other formats, we'll use the same extension
+# For PDF files, the translation function (_translate_pdf_file)
+                        # always produces a readable .epub sidecar, so use that extension.
+                        # For other formats we keep the same extension as the source.
                         if original_ext == '.pdf':
-                            translated_ebook_filename = f"translated_{os.path.splitext(original_filename)[0]}.md"
+                            translated_ebook_filename = f"translated_{os.path.splitext(original_filename)[0]}.epub"
                         else:
                             translated_ebook_filename = f"translated_{original_filename}"
                             
-                        translated_ebook_path = os.path.join(temp_dir, translated_ebook_filename)
+                        translated_ebook_path = os.path.join(out_dir_path, translated_ebook_filename)
                         
                         # Use the improved translator with user feedback
                         try:

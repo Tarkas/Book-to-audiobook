@@ -317,7 +317,7 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
                     error = f'Error: The provided --ebook "{args["ebook"]}" does not exist.'
                     print(error)
                     sys.exit(1) 
-                # Optional pre-conversion translation (headless). Mirrors the tkinter UI
+# Optional pre-conversion translation (headless). Mirrors the tkinter UI
                 # translation step so the cloud/CLI path can translate before converting.
                 if args.get('translate'):
                     src_lang = args.get('source_lang')
@@ -334,21 +334,50 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
                             stem, ext = os.path.splitext(base)
                             out_name = f'translated_{stem}.md' if ext.lower() == '.pdf' else f'translated_{base}'
                             out_path = os.path.join(tmp_dir, out_name)
+                            translated_ok = False
                             if os.path.exists(out_path) and os.path.getsize(out_path) > 0:
                                 args['ebook'] = os.path.abspath(out_path)
-                                print(f"Reusing existing translation: {args['ebook']}")
+                                translated_ok = True
+                                print(f"Переиспользую существующий перевод: {args['ebook']}")
                             else:
-                                print(f"Translating ebook {src_lang} -> {tgt_lang} using {args['translation_method']}...")
-                                translated = translate_ebook_file(args['ebook'], src_lang, tgt_lang, args['translation_method'], out_path, tmp_dir, None)
+                                print(f"Перевожу книгу {src_lang} -> {tgt_lang} через {args['translation_method']}...")
+                                try:
+                                    translated = translate_ebook_file(args['ebook'], src_lang, tgt_lang, args['translation_method'], out_path, tmp_dir, None)
+                                except Exception as translate_error:
+                                    translated = None
+                                    print(f'Ошибка перевода ({translate_error}); конвертирую оригинальную книгу.')
                                 if translated and os.path.exists(translated):
                                     args['ebook'] = os.path.abspath(translated)
-                                    print(f"Translation complete: {args['ebook']}")
+                                    translated_ok = True
+                                    print(f"Перевод готов: {args['ebook']}")
                                 else:
-                                    print('Translation produced no file; converting the original ebook.')
+                                    print('Перевод не создал файл; конвертирую оригинальную книгу.')
+                            # Copy the translated ebook next to the audiobook so the reader
+                            # can keep both. Falls back silently when the output dir is not
+                            # created yet (convert_ebook creates it later).
+                            if translated_ok and args.get('audiobooks_dir'):
+                                try:
+                                    os.makedirs(args['audiobooks_dir'], exist_ok=True)
+                                    src_sidecar = args['ebook']
+                                    dst_sidecar = os.path.join(args['audiobooks_dir'], os.path.basename(src_sidecar))
+                                    shutil.copy2(src_sidecar, dst_sidecar)
+                                    print(f'Перевод сохранён рядом с аудиокнигой: {dst_sidecar}')
+                                except Exception as copy_error:
+                                    print(f'Предупреждение: не удалось скопировать перевод рядом с аудиокнигой: {copy_error}')
+                            if not translated_ok:
+                                print('**********************************************************************')
+                                print('ВНИМАНИЕ: не удалось получить перевод. АУДИОКНИГА БУДЕТ ОЗВУЧЕНА')
+                                print('ИЗ ОРИГИНАЛЬНОГО (НЕПЕРЕВЕДЁННОГО) ТЕКСТА. Проверьте метод перевода')
+                                print('и интернет-соединение, затем запустите конвертацию повторно.')
+                                print('**********************************************************************')
                         except Exception as translate_error:
-                            print(f'Translation failed ({translate_error}); converting the original ebook.')
+                            print(f'Ошибка перевода ({translate_error}); конвертирую оригинальную книгу.')
+                            print('**********************************************************************')
+                            print('ВНИМАНИЕ: не удалось получить перевод. АУДИОКНИГА БУДЕТ ОЗВУЧЕНА')
+                            print('ИЗ ОРИГИНАЛЬНОГО (НЕПЕРЕВЕДЁННОГО) ТЕКСТА.')
+                            print('**********************************************************************')
                     else:
-                        print('Translation skipped (missing or identical source/target language).')
+                        print('Перевод пропущен (исходный и целевой языки совпадают или не заданы).')
                 progress_status, passed = convert_ebook(args, ctx)
                 if passed is False:
                     error = f'Conversion failed: {progress_status}'
