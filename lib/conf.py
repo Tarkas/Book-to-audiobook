@@ -42,7 +42,9 @@ DEEPL_API_KEY = os.environ.get('DEEPL_API_KEY', None)
 prog_version = (lambda: open('VERSION.txt').read().strip())()
 
 min_python_version = (3,10)
-max_python_version = (3,12)
+# 3.13 allowed: Google Colab switched its runtime to Python 3.13. The desktop
+# launchers (ebook2audiobook.cmd/.sh) still install their own Python 3.12.
+max_python_version = (3,13)
 
 NATIVE = 'native'
 FULL_DOCKER = 'full_docker'
