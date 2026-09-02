@@ -985,7 +985,7 @@ class Ebook2AudiobookGUI:
             cfg = self._collect_cloud_settings()
             raw = json.dumps(cfg, ensure_ascii=False).encode('utf-8')
             config_b64 = base64.urlsafe_b64encode(raw).decode('ascii').rstrip('=')
-            url = f'{COLAB_NOTEBOOK_URL}?c={config_b64}'
+            url = f'{COLAB_NOTEBOOK_URL}?c={config_b64}&t={int(time.time())}'
             try:
                 self.root.clipboard_clear()
                 self.root.clipboard_append(config_b64)

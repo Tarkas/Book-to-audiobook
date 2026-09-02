@@ -323,6 +323,7 @@ class Ebook2AudiobookClient(App):
         return cfg
 
     def launch_cloud(self):
+        import time as _time
         cfg = self.collect_cloud_settings()
         raw = json.dumps(cfg, ensure_ascii=False).encode('utf-8')
         config_b64 = base64.urlsafe_b64encode(raw).decode('ascii').rstrip('=')
@@ -330,7 +331,8 @@ class Ebook2AudiobookClient(App):
             Clipboard.copy(config_b64)
         except Exception:
             pass
-        open_url(f'{COLAB_NOTEBOOK_URL}?c={config_b64}')
+        _ts = int(_time.time())
+        open_url(f'{COLAB_NOTEBOOK_URL}?c={config_b64}&t={_ts}')
 
 
 if __name__ == '__main__':
