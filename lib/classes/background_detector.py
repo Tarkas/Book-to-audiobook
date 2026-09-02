@@ -5,6 +5,11 @@ import numpy as np
 import librosa
 import torchaudio
 
+# pyannote.audio 3.1.1 uses np.NaN which was removed in NumPy 2.0.
+# numpy 1.x has no py3.13 wheels, so restore the alias here.
+if not hasattr(np, 'NaN'):
+    np.NaN = np.nan
+
 # pyannote.audio 3.1.1 / speechbrain 1.0.0 call the torchaudio backend API
 # (set/get/list_audio_backend(s)) at import time, but new torchaudio (e.g. the
 # Colab preinstalled build) removed all three. Restore them as no-ops
