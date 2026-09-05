@@ -205,13 +205,21 @@ def prepare_dirs(src, session):
         os.makedirs(session['audiobooks_dir'], exist_ok=True)
         session['ebook'] = os.path.join(session['process_dir'], os.path.basename(src))
         if os.path.exists(session['ebook']):
-            if compare_files_by_hash(session['ebook'], src):
+            if os.path.exists(src):
+                if compare_files_by_hash(session['ebook'], src):
+                    resume = True
+            else:
                 resume = True
         if not resume:
             shutil.rmtree(session['chapters_dir'], ignore_errors=True)
         os.makedirs(session['chapters_dir'], exist_ok=True)
         os.makedirs(session['chapters_dir_sentences'], exist_ok=True)
-        shutil.copy(src, session['ebook']) 
+        if os.path.exists(src):
+            shutil.copy(src, session['ebook']) 
+        elif not os.path.exists(session['ebook']):
+            error = f'Ebook file not found: {src}'
+            print(error)
+            return False
         return True
     except Exception as e:
         DependencyError(e)
