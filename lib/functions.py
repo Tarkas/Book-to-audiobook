@@ -2156,7 +2156,9 @@ def convert_ebook(args, ctx=None):
                                     for value, attributes in data:
                                         metadata[key] = value
                             metadata['language'] = session['language']
-                            metadata['title'] = metadata['title'] = metadata['title'] or Path(session['ebook']).stem.replace('_',' ')
+                            _fallback_title = Path(session['ebook']).stem.replace('_',' ')
+                            if not metadata['title'] or metadata['title'].strip().lower() in ('index', 'colab', 'untitled', ''):
+                                metadata['title'] = _fallback_title
                             metadata['creator'] =  False if not metadata['creator'] or metadata['creator'] == 'Unknown' else metadata['creator']
                             session['metadata'] = metadata                  
                             try:
