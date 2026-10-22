@@ -9,8 +9,8 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas
 icon.filename = %(source.dir)s/icon.png
 presplash.filename = %(source.dir)s/icon.png
-version = 1.2.0
-version.code = 4
+version = 1.3.0
+version.code = 5
 
 # MUST be "apk", not "aab". With buildozer 1.5.0 / p4a release-2024.01.21 the
 # default is "aab": p4a then runs `gradlew bundleRelease`, produces an Android

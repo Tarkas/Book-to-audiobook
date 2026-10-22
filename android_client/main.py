@@ -37,6 +37,12 @@ COLAB_NOTEBOOK_URL = (
     f'https://colab.research.google.com/github/{CLOUD_REPO}'
     f'/blob/{CLOUD_BRANCH}/Notebooks/colab_ebook2audiobook.ipynb'
 )
+# Kaggle notebook: config is passed via the clipboard, not URL params.
+# Update the username/slug after the notebook is published on Kaggle.
+KAGGLE_NOTEBOOK_URL = (
+    'https://www.kaggle.com/code/serhiimelnichenko/ebook2audiobook'
+)
+KAGGLE_NOTEBOOK_NAME = 'ebook2audiobook'
 
 # iso3 code -> all spellings used for the type-to-filter search.
 # The first spelling is shown in the list. Mirrors lib/language_codes.py.
@@ -226,6 +232,11 @@ class Ebook2AudiobookClient(App):
             lbl.bind(size=lambda l, s: setattr(l, 'text_size', s))
             form.add_widget(lbl)
 
+        label('Облачный сервис:')
+        self.provider = Spinner(text='Colab (Google)', values=['Colab (Google)', 'Kaggle'],
+                                size_hint_y=None, height=dp(44))
+        form.add_widget(self.provider)
+
         label('Язык озвучки:')
         self.language = LanguagePicker(default_code='eng')
         form.add_widget(self.language)
@@ -289,11 +300,21 @@ class Ebook2AudiobookClient(App):
                          size_hint_y=None, height=dp(56),
                          background_color=(0.2, 0.6, 0.2, 1))
         run_btn.bind(on_release=lambda *_: self.launch_cloud())
+
+        def _provider_changed(spinner, value):
+            if 'Kaggle' in value:
+                run_btn.text = 'Запустить в облаке (Kaggle)'
+                run_btn.background_color = (0.2, 0.5, 0.7, 1)
+            else:
+                run_btn.text = 'Запустить в облаке (Colab)'
+                run_btn.background_color = (0.2, 0.6, 0.2, 1)
+
+        self.provider.bind(text=_provider_changed)
         form.add_widget(run_btn)
 
         hint = Label(
-            text='Книга загружается уже в Colab. Настройки передаются через '
-                 'ссылку и копируются в буфер обмена как запасной вариант.',
+            text='Книга загружается уже в облаке. Настройки передаются через '
+                 'ссылку (Colab) или буфер обмена (Kaggle).',
             size_hint_y=None, halign='left', valign='top')
         hint.bind(width=lambda l, w: setattr(l, 'text_size', (w, None)))
         hint.bind(texture_size=lambda l, s: setattr(l, 'height', s[1]))
@@ -331,8 +352,37 @@ class Ebook2AudiobookClient(App):
             Clipboard.copy(config_b64)
         except Exception:
             pass
+        is_kaggle = 'Kaggle' in self.provider.text
         _ts = int(_time.time())
-        open_url(f'{COLAB_NOTEBOOK_URL}?c={config_b64}&t={_ts}')
+        if is_kaggle:
+            # Kaggle does not support URL parameters for config, so the
+            # config goes to the clipboard and the user pastes it into
+            # the notebook's config field.
+            open_url(KAGGLE_NOTEBOOK_URL)
+            self._show_kaggle_hint()
+        else:
+            open_url(f'{COLAB_NOTEBOOK_URL}?c={config_b64}&t={_ts}')
+
+    def _show_kaggle_hint(self):
+        content = BoxLayout(orientation='vertical', spacing=dp(8),
+                            padding=dp(12))
+        msg = Label(
+            text='Настройки скопированы в буфер обмена.\n\n'
+                 '1. На Kaggle включите Internet в Settings.\n'
+                 '2. Вставьте настройки в поле config_b64\n'
+                 '   в ячейке (1) ноутбука.\n'
+                 '3. Загрузите книгу и запустите ячейки.',
+            halign='left', valign='middle')
+        msg.bind(width=lambda l, w: setattr(l, 'text_size', (w, None)))
+        msg.bind(texture_size=lambda l, s: setattr(l, 'height', s[1]))
+        content.add_widget(msg)
+        ok_btn = Button(text='Понятно', size_hint_y=None, height=dp(48),
+                        background_color=(0.2, 0.5, 0.7, 1))
+        content.add_widget(ok_btn)
+        popup = Popup(title='Kaggle', content=content,
+                      size_hint=(0.9, None), height=dp(240))
+        ok_btn.bind(on_release=popup.dismiss)
+        popup.open()
 
 
 if __name__ == '__main__':
