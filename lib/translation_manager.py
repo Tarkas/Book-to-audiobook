@@ -46,12 +46,31 @@ class TranslationManager:
         if os.path.exists(self.metadata_file):
             try:
                 with open(self.metadata_file, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    metadata = json.load(f)
+                cached = (metadata.get('source_lang'), metadata.get('target_lang'),
+                          metadata.get('method'))
+                current = (self.source_lang, self.target_lang, self.method)
+                if cached != current:
+                    logger.warning(
+                        f"Translation cache was built for {cached}, requested {current}; "
+                        "discarding the stale cache."
+                    )
+                    self._clear_cache_files()
+                    return self._create_default_metadata()
+                return metadata
             except Exception as e:
                 logger.warning(f"Failed to load translation metadata: {e}")
                 return self._create_default_metadata()
         else:
             return self._create_default_metadata()
+
+    def _clear_cache_files(self):
+        try:
+            for name in os.listdir(self.translation_dir):
+                if name.startswith('chapter_') and name.endswith('.json'):
+                    os.remove(os.path.join(self.translation_dir, name))
+        except Exception as e:
+            logger.warning(f"Failed to clear stale translation cache: {e}")
             
     def _create_default_metadata(self):
         """Create default metadata structure"""

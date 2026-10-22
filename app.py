@@ -1,5 +1,6 @@
 import argparse
 import filecmp
+import hashlib
 import importlib.util
 import os
 import shutil
@@ -327,8 +328,13 @@ Tip: to add of silence (1.4 seconds) into your text just use "###" or "[pause]".
                             from lib.improved_translator import translate_ebook_file
                             # Deterministic location (instead of mkdtemp) so a resumed
                             # run reuses the finished translation and its cache instead
-                            # of translating the whole book again.
-                            tmp_dir = os.path.join(os.path.abspath('tmp'), 'translation')
+                            # of translating the whole book again. Per session: cloud
+                            # runs convert one book part per session, and chapter
+                            # indices of different parts would otherwise collide.
+                            translation_id = args.get('session') or hashlib.sha1(
+                                os.path.abspath(args['ebook']).encode('utf-8')
+                            ).hexdigest()[:16]
+                            tmp_dir = os.path.join(os.path.abspath('tmp'), 'translation', translation_id)
                             os.makedirs(tmp_dir, exist_ok=True)
                             base = os.path.basename(args['ebook'])
                             stem, ext = os.path.splitext(base)
